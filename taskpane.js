@@ -50,7 +50,7 @@ async function triggerFlow() {
         const emailData = await getEmailData();
         
         // Replace with your Power Automate HTTP POST URL
-        const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/98694a6fe5ce4b1d8389f23d378bd9e0/triggers/manual/paths/invoke?api-version=1';
+        const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/98694a6fe5ce4b1d8389f23d378bd9e0/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=jEGsyOkQ2_bKCUTqufTMr99gQw9x4Q5oPphpSI7fMEA';
         
         // Make the request to Power Automate
         const response = await fetch(flowUrl, {
