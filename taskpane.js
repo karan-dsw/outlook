@@ -1,22 +1,42 @@
+let mailboxItem = null;
+
 Office.onReady((info) => {
     if (info.host === Office.HostType.Outlook) {
+        // Store the mailbox item reference
+        mailboxItem = Office.context.mailbox.item;
+        
         // Display current email subject
         displayEmailInfo();
+        
+        console.log('Office.js initialized successfully');
     }
 });
 
 function displayEmailInfo() {
-    Office.context.mailbox.item.subject.getAsync((result) => {
-        if (result.status === Office.AsyncResultStatus.Succeeded) {
-            document.getElementById('emailSubject').textContent = result.value;
-            document.getElementById('emailInfo').style.display = 'block';
-        }
-    });
+    if (!mailboxItem) {
+        console.error('Mailbox item not available');
+        return;
+    }
+    
+    // For Outlook, subject is a property, not a method in read mode
+    try {
+        const subject = mailboxItem.subject;
+        document.getElementById('emailSubject').textContent = subject || 'No subject';
+        document.getElementById('emailInfo').style.display = 'block';
+    } catch (error) {
+        console.error('Error displaying email info:', error);
+    }
 }
 
 async function triggerFlow() {
     const button = document.getElementById('triggerButton');
     const statusDiv = document.getElementById('statusMessage');
+    
+    // Check if Office context is available
+    if (!mailboxItem) {
+        showStatus('Outlook context not available. Please reload the add-in.', 'error');
+        return;
+    }
     
     // Disable button during request
     button.disabled = true;
@@ -42,9 +62,12 @@ async function triggerFlow() {
         });
         
         if (response.ok) {
+            const responseText = await response.text();
+            console.log('Flow response:', responseText);
             showStatus('Flow triggered successfully!', 'success');
         } else {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
         }
         
     } catch (error) {
@@ -59,32 +82,37 @@ async function triggerFlow() {
 
 async function getEmailData() {
     return new Promise((resolve, reject) => {
-        const item = Office.context.mailbox.item;
+        if (!mailboxItem) {
+            reject(new Error('Mailbox item not available'));
+            return;
+        }
         
-        // Get email subject
-        item.subject.getAsync((subjectResult) => {
-            if (subjectResult.status !== Office.AsyncResultStatus.Succeeded) {
-                reject(new Error('Failed to get email subject'));
-                return;
-            }
+        try {
+            // In read mode, these are properties, not async methods
+            const subject = mailboxItem.subject || 'No subject';
+            const from = mailboxItem.from ? mailboxItem.from.emailAddress : 'Unknown';
+            const itemId = mailboxItem.itemId || 'Unknown';
             
-            // Get sender email
-            const from = item.from ? item.from.emailAddress : 'Unknown';
-            
-            // Get email ID
-            const itemId = item.itemId;
+            // For compose mode or if you need the body, you'd use async methods
+            // But for basic info in read mode, properties work fine
             
             // Prepare data to send to Power Automate
             const emailData = {
-                subject: subjectResult.value,
+                subject: subject,
                 from: from,
                 itemId: itemId,
                 triggeredAt: new Date().toISOString(),
-                userEmail: Office.context.mailbox.userProfile.emailAddress
+                userEmail: Office.context.mailbox.userProfile.emailAddress,
+                conversationId: mailboxItem.conversationId || 'Unknown'
             };
             
+            console.log('Email data prepared:', emailData);
             resolve(emailData);
-        });
+            
+        } catch (error) {
+            console.error('Error getting email data:', error);
+            reject(error);
+        }
     });
 }
 
