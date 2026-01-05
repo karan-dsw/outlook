@@ -7,12 +7,12 @@
   
   <Id>12345678-1234-1234-1234-123456789012</Id>
   <Version>1.0.0.2</Version>
-  <ProviderName>Your Company</ProviderName>
+  <ProviderName>Data Science Wizards</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Trigger Flow"/>
-  <Description DefaultValue="Trigger Power Automate flow from Outlook"/>
-  <IconUrl DefaultValue="https://karan-dsw.github.io/outlook/icon-64.png"/>
-  <HighResolutionIconUrl DefaultValue="https://karan-dsw.github.io/outlook/icon-128.png"/>
+  <Description DefaultValue="Trigger Power Automate flow for Outlook"/>
+  <IconUrl DefaultValue="https://karan-dsw.github.io/outlook/logo64.png"/>
+  <HighResolutionIconUrl DefaultValue="https://karan-dsw.github.io/outlook/logo128.png"/>
   <SupportUrl DefaultValue="https://karan-dsw.github.io/outlook/support"/>
   
   <AppDomains>
