@@ -102,7 +102,7 @@ async function getEmailData() {
                 from: from,
                 itemId: itemId,
                 triggeredAt: new Date().toISOString(),
-                userEmail: Office.context.mailbox.userProfile.emailAddress,
+                email: Office.context.mailbox.userProfile.emailAddress,
                 conversationId: mailboxItem.conversationId || 'Unknown'
             };
             
