@@ -50,8 +50,7 @@ async function triggerFlow() {
         const emailData = await getEmailData();
         
         // Replace with your Power Automate HTTP POST URL
-        const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/98694a6fe5ce4b1d8389f23d378bd9e0/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=jEGsyOkQ2_bKCUTqufTMr99gQw9x4Q5oPphpSI7fMEA';
-        
+        const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d24491dc744c4daaa0ed8c41d2afd928/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=elpbeJ6uwo9d6new1ea8hRBciI19lRaX-Xp0wLaYLec';
         // Make the request to Power Automate
         const response = await fetch(flowUrl, {
             method: 'POST',
@@ -72,11 +71,11 @@ async function triggerFlow() {
         
     } catch (error) {
         console.error('Error triggering flow:', error);
-        showStatus('Failed to trigger flow: ' + error.message, 'error');
+        showStatus('Failed to Auto Process: ' + error.message, 'error');
     } finally {
         // Re-enable button
         button.disabled = false;
-        button.textContent = 'Trigger Flow';
+        button.textContent = 'Auto Process';
     }
 }
 

@@ -9,8 +9,8 @@
   <Version>1.0.0.2</Version>
   <ProviderName>Data Science Wizards</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Trigger Flow"/>
-  <Description DefaultValue="Trigger Power Automate flow for Outlook"/>
+  <DisplayName DefaultValue="Auto Process"/>
+  <Description DefaultValue="Trigger Underwriting or Claims Workflow for Automated Processing"/>
   <IconUrl DefaultValue="https://karan-dsw.github.io/outlook/logo64.png"/>
   <HighResolutionIconUrl DefaultValue="https://karan-dsw.github.io/outlook/logo128.png"/>
   <SupportUrl DefaultValue="https://karan-dsw.github.io/outlook/support"/>
@@ -101,7 +101,7 @@
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="Flow Actions"/>
-        <bt:String id="TriggerButton.Label" DefaultValue="Trigger Flow"/>
+        <bt:String id="TriggerButton.Label" DefaultValue="Auto Process"/>
         <bt:String id="TriggerButton.SupertipTitle" DefaultValue="Trigger Power Automate"/>
       </bt:ShortStrings>
       <bt:LongStrings>

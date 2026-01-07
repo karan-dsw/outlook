@@ -13,7 +13,7 @@
 
         // This function is called when the ribbon button is clicked
         async function triggerFlowFromRibbon(event) {
-            console.log('Trigger Flow button clicked from ribbon');
+            console.log('Auto Process button clicked from ribbon');
             
             try {
                 // Show notification that processing has started
@@ -31,7 +31,7 @@
                 console.log('Email data collected:', emailData);
                 
                 // Your Power Automate flow URL
-                const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/98694a6fe5ce4b1d8389f23d378bd9e0/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=jEGsyOkQ2_bKCUTqufTMr99gQw9x4Q5oPphpSI7fMEA';
+                const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d24491dc744c4daaa0ed8c41d2afd928/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=elpbeJ6uwo9d6new1ea8hRBciI19lRaX-Xp0wLaYLec';
                 
                 // Call Power Automate
                 const response = await fetch(flowUrl, {
@@ -74,7 +74,7 @@
                     "error",
                     {
                         type: "errorMessage",
-                        message: "Failed to trigger flow: " + error.message
+                        message: "Failed to Auto Process: " + error.message
                     }
                 );
             } finally {
