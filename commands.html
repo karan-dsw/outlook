@@ -41,35 +41,23 @@ async function triggerFlowFromRibbon(event) {
             const err = await response.text();
             throw new Error(`HTTP ${response.status}: ${err}`);
         }
-        
+        const attachments = emailData && emailData.attachments ? emailData.attachments : [];
+        const attName = attachments[0].name;
+                    const baseName = attName.replace(/\.[^.]+$/, '');
+                    const reportFile = baseName + '.html';
+                    const baseUrl = 'https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/';
+                    const reportUrl = baseUrl + encodeURIComponent(reportFile);
         Office.context.mailbox.item.notificationMessages.addAsync(
             "success",
             {
                 type: "informationalMessage",
-                message: "Email processed successfully ✓",
+                message: "Email processed successfully ✓" + reportUrl,
                 icon: "Icon.80x80",
                 persistent: true
             }
         );
 
-        const attachments = emailData && emailData.attachments ? emailData.attachments : [];
-                if (attachments.length > 0 && attachments[0].name) {
-                    const attName = attachments[0].name;
-                    const baseName = attName.replace(/\.[^.]+$/, '');
-                    const reportFile = baseName + '.html';
-                    const baseUrl = 'https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/';
-                    const reportUrl = baseUrl + encodeURIComponent(reportFile);
-
-                    Office.context.mailbox.item.notificationMessages.addAsync(
-                        "report",
-                        {
-                            type: "informationalMessage",
-                            message: "Report ready: " + reportUrl,
-                            icon: "Icon.80x80",
-                            persistent: true
-                        }
-                    );
-                }
+            
         
 
     } catch (error) {
