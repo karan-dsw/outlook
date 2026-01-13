@@ -41,7 +41,7 @@ async function triggerFlowFromRibbon(event) {
             const err = await response.text();
             throw new Error(`HTTP ${response.status}: ${err}`);
         }
-
+        
         Office.context.mailbox.item.notificationMessages.addAsync(
             "success",
             {
@@ -65,6 +65,7 @@ async function triggerFlowFromRibbon(event) {
                         {
                             type: "informationalMessage",
                             message: "Report ready: " + reportUrl,
+                            icon: "Icon.80x80",
                             persistent: true
                         }
                     );
