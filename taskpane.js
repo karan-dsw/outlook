@@ -63,21 +63,7 @@ async function triggerFlow() {
         if (response.ok) {
             const responseText = await response.text();
             console.log('Flow response:', responseText);
-            showStatus('Flow triggered successfully! Report will be available shortly.', 'success');
-
-            // After 30s, construct and display the hardcoded OneDrive link
-            setTimeout(() => {
-                try {
-                    const link = buildHardcodedReportLink();
-                    if (link) {
-                        displayReportLink(link);
-                    } else {
-                        console.warn('Could not determine attachment filename to build report link');
-                    }
-                } catch (e) {
-                    console.error('Error building/displaying report link:', e);
-                }
-            }, 30000);
+            showStatus('Flow triggered successfully!', 'success');
         } else {
             const errorText = await response.text();
             throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
@@ -142,41 +128,4 @@ function showStatus(message, type) {
             statusDiv.style.display = 'none';
         }, 5000);
     }
-}
-
-// Build the hardcoded OneDrive report link using the first PDF attachment's base name
-function buildHardcodedReportLink() {
-    if (!mailboxItem || !mailboxItem.attachments || mailboxItem.attachments.length === 0) return null;
-
-    // Prefer first attachment that ends with .pdf
-    let att = mailboxItem.attachments.find(a => typeof a.name === 'string' && a.name.toLowerCase().endsWith('.pdf')) || mailboxItem.attachments[0];
-    if (!att || !att.name) return null;
-
-    // Remove extension and append .html
-    const baseName = att.name.replace(/\.[^.]+$/, '');
-    const htmlName = baseName + '.html';
-
-    const baseUrl = 'https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/';
-    return baseUrl + encodeURIComponent(htmlName);
-}
-
-// Update the UI to show the report link labeled 'Report'
-function displayReportLink(url) {
-    const container = document.getElementById('reportContainer');
-    const linkElem = document.getElementById('reportLink');
-    if (!container || !linkElem) return;
-
-    // Create anchor
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.textContent = 'Report';
-    a.style.color = '#0078d4';
-
-    // Clear previous and append
-    linkElem.innerHTML = '';
-    linkElem.appendChild(document.createTextNode('Your report is ready: '));
-    linkElem.appendChild(a);
-
-    container.style.display = 'block';
 }
