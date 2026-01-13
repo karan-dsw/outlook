@@ -41,24 +41,16 @@ async function triggerFlowFromRibbon(event) {
             const err = await response.text();
             throw new Error(`HTTP ${response.status}: ${err}`);
         }
-        const attachments = emailData && emailData.attachments ? emailData.attachments : [];
-        const attName = attachments[0].name;
-                    const baseName = attName.replace(/\.[^.]+$/, '');
-                    const reportFile = baseName + '.html';
-                    const baseUrl = 'https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/';
-                    const reportUrl = baseUrl + encodeURIComponent(reportFile);
+
         Office.context.mailbox.item.notificationMessages.addAsync(
             "success",
             {
                 type: "informationalMessage",
-                message: reportUrl,
+                message: "Email processed successfully ✓",
                 icon: "Icon.80x80",
                 persistent: true
             }
         );
-
-            
-        
 
     } catch (error) {
         console.error(error);
@@ -403,6 +395,7 @@ Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
     </script>
 </body>
 </html> -->
+
 
 
 
