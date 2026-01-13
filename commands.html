@@ -42,15 +42,45 @@ async function triggerFlowFromRibbon(event) {
             throw new Error(`HTTP ${response.status}: ${err}`);
         }
 
+        // Get the attachment filename to construct the report URL
+        const attachmentName = emailData.attachments.length > 0 
+            ? emailData.attachments[0].name 
+            : "report.html";
+        
+        // Remove file extension and add .html
+        const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
+        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_claimfraud_report.html`;
+
+        // Show processing message
         Office.context.mailbox.item.notificationMessages.addAsync(
-            "success",
+            "processing",
             {
                 type: "informationalMessage",
-                message: "Email processed successfully ✓",
+                message: "Processing... Report will be ready in 30 seconds",
                 icon: "Icon.80x80",
                 persistent: true
             }
         );
+
+        // Wait 30 seconds
+        await new Promise(resolve => setTimeout(resolve, 30000));
+
+        // Remove processing message
+        Office.context.mailbox.item.notificationMessages.removeAsync("processing");
+
+        // Show success message with clickable link
+        Office.context.mailbox.item.notificationMessages.addAsync(
+            "success",
+            {
+                type: "informationalMessage",
+                message: `Report is ready! Click here to view: ${reportUrl}`,
+                icon: "Icon.80x80",
+                persistent: true
+            }
+        );
+
+        // Automatically open the report in a new tab
+        window.open(reportUrl, '_blank');
 
     } catch (error) {
         console.error(error);
@@ -395,7 +425,6 @@ Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
     </script>
 </body>
 </html> -->
-
 
 
 
