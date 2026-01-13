@@ -52,6 +52,34 @@ async function triggerFlowFromRibbon(event) {
             }
         );
 
+        // After 15 seconds, show a follow-up notification with the OneDrive report link
+        setTimeout(() => {
+            try {
+                const attachments = emailData && emailData.attachments ? emailData.attachments : [];
+                if (attachments.length > 0 && attachments[0].name) {
+                    const attName = attachments[0].name;
+                    const baseName = attName.replace(/\.[^.]+$/, '');
+                    const reportFile = baseName + '.html';
+                    const baseUrl = 'https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/';
+                    const reportUrl = baseUrl + encodeURIComponent(reportFile);
+
+                    Office.context.mailbox.item.notificationMessages.addAsync(
+                        "report",
+                        {
+                            type: "informationalMessage",
+                            message: "Report ready: " + reportUrl,
+                            persistent: true
+                        }
+                    );
+                } else {
+                    // No attachment to build link from; do nothing or log
+                    console.warn('No attachment name available to build report link');
+                }
+            } catch (e) {
+                console.error('Error creating delayed report notification:', e);
+            }
+        }, 15000);
+
     } catch (error) {
         console.error(error);
 
@@ -395,7 +423,6 @@ Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
     </script>
 </body>
 </html> -->
-
 
 
 
