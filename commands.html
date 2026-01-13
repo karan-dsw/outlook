@@ -49,7 +49,7 @@ async function triggerFlowFromRibbon(event) {
         
         // Remove file extension and add .html
         const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
-        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_claimfraud_report.html`;
+        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_claimfraud_report.pdf`;
 
         // Show processing message
         Office.context.mailbox.item.notificationMessages.addAsync(
@@ -68,19 +68,35 @@ async function triggerFlowFromRibbon(event) {
         // Remove processing message
         Office.context.mailbox.item.notificationMessages.removeAsync("processing");
 
-        // Show success message with clickable link
+        // Show success message
         Office.context.mailbox.item.notificationMessages.addAsync(
             "success",
             {
                 type: "informationalMessage",
-                message: `Report is ready! Click here to view: ${reportUrl}`,
+                message: "Report is ready! Opening in new tab...",
                 icon: "Icon.80x80",
                 persistent: true
             }
         );
 
-        // Automatically open the report in a new tab
-        window.open(reportUrl, '_blank');
+        // Automatically open the report in a new tab using Office dialog
+        try {
+            Office.context.ui.displayDialogAsync(
+                reportUrl,
+                { height: 80, width: 80, displayInIframe: false },
+                (result) => {
+                    if (result.status === Office.AsyncResultStatus.Failed) {
+                        console.error("Dialog failed:", result.error.message);
+                        // Fallback to window.open
+                        window.open(reportUrl, '_blank');
+                    }
+                }
+            );
+        } catch (e) {
+            console.error("Error opening dialog:", e);
+            // Fallback to window.open
+            window.open(reportUrl, '_blank');
+        }
 
     } catch (error) {
         console.error(error);
