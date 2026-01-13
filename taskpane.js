@@ -91,7 +91,7 @@ async function getEmailData() {
             const subject = mailboxItem.subject || 'No subject';
             const from = mailboxItem.from ? mailboxItem.from.emailAddress : 'Unknown';
             const itemId = mailboxItem.itemId || 'Unknown';
-            
+            const internetMessageId = mailboxItem.internetMessageId || '';
             // For compose mode or if you need the body, you'd use async methods
             // But for basic info in read mode, properties work fine
             
@@ -100,6 +100,7 @@ async function getEmailData() {
                 subject: subject,
                 from: from,
                 itemId: itemId,
+                internetMessageId: internetMessageId,
                 triggeredAt: new Date().toISOString(),
                 email: Office.context.mailbox.userProfile.emailAddress,
                 conversationId: mailboxItem.conversationId || 'Unknown'
