@@ -58,7 +58,7 @@ async function triggerFlowFromRibbon(event) {
                 type: "informationalMessage",
                 message: "Processing... Report will be ready in 30 seconds",
                 icon: "Icon.80x80",
-                persistent: true
+                persistent: false
             }
         );
 
@@ -68,34 +68,132 @@ async function triggerFlowFromRibbon(event) {
         // Remove processing message
         Office.context.mailbox.item.notificationMessages.removeAsync("processing");
 
-        // Show success message with clickable link
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "success",
-            {
-                type: "informationalMessage",
-                message: `Report is ready! Click here to view: ${reportUrl}`,
-                icon: "Icon.80x80",
-                persistent: true
-            }
-        );
-
-        // Automatically open the report in a new tab
-         // Automatically open the report in a new tab using Office dialog
+        // Open the report in a dialog with clickable link
         try {
+            const dialogHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            padding: 30px;
+                            text-align: center;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            min-height: 100vh;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        .container {
+                            background: white;
+                            color: #333;
+                            padding: 40px;
+                            border-radius: 15px;
+                            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                            max-width: 500px;
+                        }
+                        h2 {
+                            color: #28a745;
+                            margin-bottom: 20px;
+                        }
+                        .checkmark {
+                            font-size: 60px;
+                            color: #28a745;
+                            margin-bottom: 20px;
+                        }
+                        a {
+                            display: inline-block;
+                            background: #007bff;
+                            color: white;
+                            padding: 15px 30px;
+                            text-decoration: none;
+                            border-radius: 8px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            margin-top: 20px;
+                            transition: background 0.3s;
+                        }
+                        a:hover {
+                            background: #0056b3;
+                        }
+                        .url-display {
+                            background: #f8f9fa;
+                            padding: 10px;
+                            border-radius: 5px;
+                            font-size: 12px;
+                            color: #666;
+                            margin-top: 15px;
+                            word-break: break-all;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="checkmark">✓</div>
+                        <h2>Report is Ready!</h2>
+                        <p>Your fraud detection report has been generated successfully.</p>
+                        <a href="${reportUrl}" target="_blank" onclick="window.open('${reportUrl}', '_blank'); return false;">
+                            View Report
+                        </a>
+                        <div class="url-display">
+                            ${reportUrl}
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            const dialogUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(dialogHtml);
+            
             Office.context.ui.displayDialogAsync(
-                reportUrl,
-                { height: 80, width: 80, displayInIframe: false },
+                dialogUrl,
+                { height: 60, width: 50, displayInIframe: false },
                 (result) => {
-                    if (result.status === Office.AsyncResultStatus.Failed) {
+                    if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        console.log("Dialog opened successfully");
+                        const dialog = result.value;
+                        
+                        // Auto-close dialog after 10 seconds
+                        setTimeout(() => {
+                            try {
+                                dialog.close();
+                            } catch (e) {
+                                console.log("Dialog already closed");
+                            }
+                        }, 10000);
+                    } else {
                         console.error("Dialog failed:", result.error.message);
-                        // Fallback to window.open
+                        // Fallback: Show persistent notification with URL
+                        Office.context.mailbox.item.notificationMessages.addAsync(
+                            "success",
+                            {
+                                type: "informationalMessage",
+                                message: `Report ready! Copy URL: ${reportUrl}`,
+                                icon: "Icon.80x80",
+                                persistent: false
+                            }
+                        );
+                        // Try to open directly
                         window.open(reportUrl, '_blank');
                     }
                 }
             );
         } catch (e) {
             console.error("Error opening dialog:", e);
-            // Fallback to window.open
+            // Fallback: Show notification and try window.open
+            Office.context.mailbox.item.notificationMessages.addAsync(
+                "success",
+                {
+                    type: "informationalMessage",
+                    message: `Report ready! Copy URL: ${reportUrl}`,
+                    icon: "Icon.80x80",
+                    persistent: false
+                }
+            );
             window.open(reportUrl, '_blank');
         }
     } catch (error) {
