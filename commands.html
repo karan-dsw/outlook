@@ -42,60 +42,56 @@ async function triggerFlowFromRibbon(event) {
             throw new Error(`HTTP ${response.status}: ${err}`);
         }
 
-        // Get the attachment filename to construct the report URL
-        const attachmentName = emailData.attachments.length > 0 
-            ? emailData.attachments[0].name 
-            : "report.html";
-        
-        // Remove file extension and add .html
-        const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
-        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_claimfraud_report.pdf`;
-
         // Show processing message
         Office.context.mailbox.item.notificationMessages.addAsync(
             "processing",
             {
                 type: "informationalMessage",
-                message: "Processing... Report will be ready in 30 seconds",
+                message: "Processing... Watching for report...",
                 icon: "Icon.80x80",
                 persistent: true
             }
         );
 
-        // Wait 30 seconds
-        await new Promise(resolve => setTimeout(resolve, 30000));
+        // Watch the SharePoint folder for new files
+        const folderUrl = "https://datasciencewiizardsai-my.sharepoint.com/:f:/g/personal/karan_panchal_datasciencewizards_ai/IgCAVSlue6_8TJtBnXPOncfTAUVSn3HNzTyNGdrRHho3cwo?e=caWHl8";
+        const reportUrl = await waitForNewReport(folderUrl, 60); // Wait up to 60 seconds
 
         // Remove processing message
         Office.context.mailbox.item.notificationMessages.removeAsync("processing");
 
-        // Show success message
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "success",
-            {
-                type: "informationalMessage",
-                message: "Report is ready! Opening in new tab...",
-                icon: "Icon.80x80",
-                persistent: true
-            }
-        );
-
-        // Automatically open the report in a new tab using Office dialog
-        try {
-            Office.context.ui.displayDialogAsync(
-                reportUrl,
-                { height: 80, width: 80, displayInIframe: false },
-                (result) => {
-                    if (result.status === Office.AsyncResultStatus.Failed) {
-                        console.error("Dialog failed:", result.error.message);
-                        // Fallback to window.open
-                        window.open(reportUrl, '_blank');
-                    }
+        if (reportUrl) {
+            // Show success message
+            Office.context.mailbox.item.notificationMessages.addAsync(
+                "success",
+                {
+                    type: "informationalMessage",
+                    message: "Report is ready! Opening in new tab...",
+                    icon: "Icon.80x80",
+                    persistent: true
                 }
             );
-        } catch (e) {
-            console.error("Error opening dialog:", e);
-            // Fallback to window.open
-            window.open(reportUrl, '_blank');
+
+            // Automatically open the report in a new tab using Office dialog
+            try {
+                Office.context.ui.displayDialogAsync(
+                    reportUrl,
+                    { height: 80, width: 80, displayInIframe: false },
+                    (result) => {
+                        if (result.status === Office.AsyncResultStatus.Failed) {
+                            console.error("Dialog failed:", result.error.message);
+                            // Fallback to window.open
+                            window.open(reportUrl, '_blank');
+                        }
+                    }
+                );
+            } catch (e) {
+                console.error("Error opening dialog:", e);
+                // Fallback to window.open
+                window.open(reportUrl, '_blank');
+            }
+        } else {
+            throw new Error("Report not found in folder after waiting");
         }
 
     } catch (error) {
@@ -113,6 +109,91 @@ async function triggerFlowFromRibbon(event) {
     } finally {
         event.completed();
     }
+}
+
+/* =====================================================
+   SHAREPOINT FOLDER WATCHER
+===================================================== */
+async function waitForNewReport(folderUrl, timeoutSeconds) {
+    // Extract the folder path from the SharePoint sharing link
+    // The sharing link format needs to be converted to a direct folder path
+    const folderPath = "personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments";
+    const siteUrl = "https://datasciencewiizardsai-my.sharepoint.com";
+    
+    const startTime = Date.now();
+    const pollInterval = 5000; // Check every 5 seconds
+    const maxWaitTime = timeoutSeconds * 1000;
+    
+    while (Date.now() - startTime < maxWaitTime) {
+        try {
+            // Get access token from Office context
+            const token = await getAccessToken();
+            
+            if (!token) {
+                console.log("No access token available, falling back to direct link");
+                return `${siteUrl}/${folderPath}`;
+            }
+            
+            // Query Microsoft Graph API for folder contents
+            const graphUrl = `https://graph.microsoft.com/v1.0/sites/datasciencewiizardsai-my.sharepoint.com,siteId/drives/driveId/root:/${folderPath}:/children?$orderby=createdDateTime desc&$top=1`;
+            
+            const response = await fetch(graphUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.value && data.value.length > 0) {
+                    const newestFile = data.value[0];
+                    
+                    // Check if file was created recently (within last 2 minutes)
+                    const fileCreatedTime = new Date(newestFile.createdDateTime);
+                    const timeDiff = Date.now() - fileCreatedTime.getTime();
+                    
+                    if (timeDiff < 120000) { // 2 minutes
+                        // Return the web URL to open the file
+                        return newestFile.webUrl || newestFile['@microsoft.graph.downloadUrl'];
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error checking folder:', error);
+        }
+        
+        // Wait before next poll
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+    
+    // If we couldn't get the latest file, return the folder URL
+    return `${siteUrl}/${folderPath}`;
+}
+
+async function getAccessToken() {
+    return new Promise((resolve) => {
+        try {
+            // Try to get SSO token from Office context
+            if (Office.context.auth && Office.context.auth.getAccessTokenAsync) {
+                Office.context.auth.getAccessTokenAsync({ forceConsent: false }, (result) => {
+                    if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        resolve(result.value);
+                    } else {
+                        console.log('Could not get access token:', result.error);
+                        resolve(null);
+                    }
+                });
+            } else {
+                resolve(null);
+            }
+        } catch (error) {
+            console.error('Error getting access token:', error);
+            resolve(null);
+        }
+    });
 }
 
 /* =====================================================
