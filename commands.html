@@ -49,7 +49,7 @@ async function triggerFlowFromRibbon(event) {
         
         // Remove file extension and add .html
         const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
-        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_claimfraud_report.pdf`;
+        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_report.pdf`;
 
         // Show processing message
         Office.context.mailbox.item.notificationMessages.addAsync(
@@ -441,6 +441,7 @@ Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
     </script>
 </body>
 </html> -->
+
 
 
 
