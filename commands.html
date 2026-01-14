@@ -49,14 +49,14 @@ async function triggerFlowFromRibbon(event) {
         
         // Remove file extension and add .html
         const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
-        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_report.pdf`;
+        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_claimfraud_report.pdf`;
 
         // Show processing message
         Office.context.mailbox.item.notificationMessages.addAsync(
             "processing",
             {
                 type: "informationalMessage",
-                message: "Processing... Report will be opened when ready",
+                message: "Processing... Report will be ready in 30 seconds",
                 icon: "Icon.80x80",
                 persistent: true
             }
@@ -68,35 +68,19 @@ async function triggerFlowFromRibbon(event) {
         // Remove processing message
         Office.context.mailbox.item.notificationMessages.removeAsync("processing");
 
-        // Show success message
+        // Show success message with clickable link
         Office.context.mailbox.item.notificationMessages.addAsync(
             "success",
             {
                 type: "informationalMessage",
-                message: "Email is already processed",
+                message: `Report is ready! Click here to view: ${reportUrl}`,
                 icon: "Icon.80x80",
                 persistent: true
             }
         );
 
-        // Automatically open the report in a new tab using Office dialog
-        try {
-            Office.context.ui.displayDialogAsync(
-                reportUrl,
-                { height: 80, width: 80, displayInIframe: false },
-                (result) => {
-                    if (result.status === Office.AsyncResultStatus.Failed) {
-                        console.error("Dialog failed:", result.error.message);
-                        // Fallback to window.open
-                        window.open(reportUrl, '_blank');
-                    }
-                }
-            );
-        } catch (e) {
-            console.error("Error opening dialog:", e);
-            // Fallback to window.open
-            window.open(reportUrl, '_blank');
-        }
+        // Automatically open the report in a new tab
+        window.open(reportUrl, '_blank');
 
     } catch (error) {
         console.error(error);
@@ -198,30 +182,127 @@ async function getAttachmentContents(item) {
     const results = [];
 
     for (const att of item.attachments) {
-        await new Promise(resolve => {
-            item.getAttachmentContentAsync(att.id, res => {
-                if (res.status === Office.AsyncResultStatus.Succeeded) {
-                    results.push({
-                        id: att.id,
-                        name: att.name,
-                        contentType: att.contentType,
-                        size: att.size,
-                        content: res.value.content,   // Base64
-                        format: res.value.format
-                    });
+        console.log(`Processing attachment: ${att.name}, ID: ${att.id}`);
+        let attachmentRetrieved = false;
+
+        // Try REST API first
+        try {
+            const token = await getCallbackToken();
+            const restUrl = Office.context.mailbox.restUrl;
+            
+            if (token && restUrl) {
+                const itemId = Office.context.mailbox.convertToRestId(
+                    item.itemId,
+                    Office.MailboxEnums.RestVersion.v2_0
+                );
+                
+                const attachmentUrl = `${restUrl}/v2.0/me/messages/${itemId}/attachments/${att.id}/$value`;
+                
+                console.log(`Attempting REST API call for ${att.name}`);
+                const response = await fetch(attachmentUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    if (blob.size > 0) {
+                        const base64Content = await blobToBase64(blob);
+                        
+                        console.log(`REST API success for ${att.name}, size: ${blob.size}`);
+                        results.push({
+                            id: att.id,
+                            name: att.name,
+                            contentType: att.contentType,
+                            size: att.size,
+                            content: base64Content,
+                            format: 'base64'
+                        });
+                        attachmentRetrieved = true;
+                    } else {
+                        console.warn(`REST API returned empty blob for ${att.name}`);
+                    }
                 } else {
-                    results.push({
-                        id: att.id,
-                        name: att.name,
-                        error: res.error.message
-                    });
+                    console.warn(`REST API failed for ${att.name}: ${response.status} ${response.statusText}`);
                 }
-                resolve();
-            });
-        });
+            }
+        } catch (error) {
+            console.error(`REST API error for ${att.name}:`, error);
+        }
+
+        // Fallback to getAttachmentContentAsync if REST API didn't work
+        if (!attachmentRetrieved) {
+            console.log(`Using fallback method for ${att.name}`);
+            try {
+                await new Promise(resolve => {
+                    item.getAttachmentContentAsync(att.id, res => {
+                        if (res.status === Office.AsyncResultStatus.Succeeded) {
+                            console.log(`Fallback success for ${att.name}`);
+                            results.push({
+                                id: att.id,
+                                name: att.name,
+                                contentType: att.contentType,
+                                size: att.size,
+                                content: res.value.content,
+                                format: res.value.format
+                            });
+                        } else {
+                            console.error(`Fallback failed for ${att.name}:`, res.error);
+                            results.push({
+                                id: att.id,
+                                name: att.name,
+                                error: res.error ? res.error.message : 'Unknown error'
+                            });
+                        }
+                        resolve();
+                    });
+                });
+            } catch (error) {
+                console.error(`Exception in fallback for ${att.name}:`, error);
+                results.push({
+                    id: att.id,
+                    name: att.name,
+                    error: error.message
+                });
+            }
+        }
     }
 
+    console.log(`Total attachments processed: ${results.length}`);
     return results;
+}
+
+/* =====================================================
+   GET FRESH CALLBACK TOKEN
+===================================================== */
+async function getCallbackToken() {
+    return new Promise((resolve) => {
+        Office.context.mailbox.getCallbackTokenAsync({ isRest: true }, (result) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                resolve(result.value);
+            } else {
+                console.error('Error getting callback token:', result.error);
+                resolve(null);
+            }
+        });
+    });
+}
+
+/* =====================================================
+   BLOB TO BASE64 CONVERTER
+===================================================== */
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64data = reader.result.split(',')[1];
+            resolve(base64data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 }
 
 /* =====================================================
@@ -441,7 +522,6 @@ Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
     </script>
 </body>
 </html> -->
-
 
 
 
