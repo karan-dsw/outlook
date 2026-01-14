@@ -42,63 +42,60 @@ async function triggerFlowFromRibbon(event) {
             throw new Error(`HTTP ${response.status}: ${err}`);
         }
 
+        // Get the attachment filename to construct the report URL
+        const attachmentName = emailData.attachments.length > 0 
+            ? emailData.attachments[0].name 
+            : "report.html";
+        
+        // Remove file extension and add .html
+        const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
+        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_claimfraud_report.pdf`;
+
         // Show processing message
         Office.context.mailbox.item.notificationMessages.addAsync(
             "processing",
             {
                 type: "informationalMessage",
-                message: "Processing... Checking for report...",
+                message: "Processing... Report will be opened when ready",
                 icon: "Icon.80x80",
                 persistent: true
             }
         );
 
-        // Get the attachment filename to construct the PDF URL
-        const attachmentName = emailData.attachments.length > 0 
-            ? emailData.attachments[0].name 
-            : "report.html";
-        
-        // Remove file extension to get base filename
-        const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
-        
-        // Check if file exists and wait for it
-        const reportUrl = await checkForPdfFile(baseFilename, 45); // Wait up to 45 seconds
+        // Wait 30 seconds
+        await new Promise(resolve => setTimeout(resolve, 30000));
 
         // Remove processing message
         Office.context.mailbox.item.notificationMessages.removeAsync("processing");
 
-        if (reportUrl) {
-            // Show success message
-            Office.context.mailbox.item.notificationMessages.addAsync(
-                "success",
-                {
-                    type: "informationalMessage",
-                    message: "Report is ready! Opening in new tab...",
-                    icon: "Icon.80x80",
-                    persistent: true
+        // Show success message
+        Office.context.mailbox.item.notificationMessages.addAsync(
+            "success",
+            {
+                type: "informationalMessage",
+                message: "Email is already processed",
+                icon: "Icon.80x80",
+                persistent: true
+            }
+        );
+
+        // Automatically open the report in a new tab using Office dialog
+        try {
+            Office.context.ui.displayDialogAsync(
+                reportUrl,
+                { height: 80, width: 80, displayInIframe: false },
+                (result) => {
+                    if (result.status === Office.AsyncResultStatus.Failed) {
+                        console.error("Dialog failed:", result.error.message);
+                        // Fallback to window.open
+                        window.open(reportUrl, '_blank');
+                    }
                 }
             );
-
-            // Automatically open the report in a new tab using Office dialog
-            try {
-                Office.context.ui.displayDialogAsync(
-                    reportUrl,
-                    { height: 80, width: 80, displayInIframe: false },
-                    (result) => {
-                        if (result.status === Office.AsyncResultStatus.Failed) {
-                            console.error("Dialog failed:", result.error.message);
-                            // Fallback to window.open
-                            window.open(reportUrl, '_blank');
-                        }
-                    }
-                );
-            } catch (e) {
-                console.error("Error opening dialog:", e);
-                // Fallback to window.open
-                window.open(reportUrl, '_blank');
-            }
-        } else {
-            throw new Error("Report not found in folder after waiting");
+        } catch (e) {
+            console.error("Error opening dialog:", e);
+            // Fallback to window.open
+            window.open(reportUrl, '_blank');
         }
 
     } catch (error) {
@@ -116,54 +113,6 @@ async function triggerFlowFromRibbon(event) {
     } finally {
         event.completed();
     }
-}
-
-/* =====================================================
-   CHECK FOR PDF FILE IN SHAREPOINT
-===================================================== */
-async function checkForPdfFile(baseFilename, timeoutSeconds) {
-    const siteUrl = "https://datasciencewiizardsai-my.sharepoint.com";
-    const folderPath = "personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments";
-    
-    // Construct the expected PDF filename
-    const expectedPdfFilename = `${baseFilename}_claimfraud_report.pdf`;
-    const pdfUrl = `${siteUrl}/${folderPath}/${expectedPdfFilename}`;
-    
-    console.log(`Checking for PDF: ${pdfUrl}`);
-    
-    const startTime = Date.now();
-    const pollInterval = 3000; // Check every 3 seconds
-    const maxWaitTime = timeoutSeconds * 1000;
-    
-    while (Date.now() - startTime < maxWaitTime) {
-        try {
-            // Try to fetch the file with a HEAD request to check existence
-            const response = await fetch(pdfUrl, {
-                method: 'HEAD',
-                credentials: 'include' // Include cookies for authentication
-            });
-            
-            if (response.ok || response.type === 'opaque') {
-                // File exists or request succeeded
-                console.log(`PDF file found: ${pdfUrl}`);
-                return pdfUrl;
-            } else if (response.status === 404) {
-                console.log(`File not found yet (404), waiting...`);
-            } else {
-                console.log(`Response status: ${response.status}`);
-            }
-            
-        } catch (error) {
-            console.log('Error checking file:', error.message);
-        }
-        
-        // Wait before next poll
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-    }
-    
-    // If file not found after timeout, return null
-    console.log(`PDF file not found after ${timeoutSeconds} seconds`);
-    return null;
 }
 
 /* =====================================================
