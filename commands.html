@@ -47,13 +47,13 @@ async function triggerFlowFromRibbon(event) {
             "processing",
             {
                 type: "informationalMessage",
-                message: "Processing... Watching for report...",
+                message: "Processing... Checking for report...",
                 icon: "Icon.80x80",
                 persistent: true
             }
         );
 
-        // Get the attachment filename to construct the expected PDF URL
+        // Get the attachment filename to construct the PDF URL
         const attachmentName = emailData.attachments.length > 0 
             ? emailData.attachments[0].name 
             : "report.html";
@@ -61,8 +61,8 @@ async function triggerFlowFromRibbon(event) {
         // Remove file extension to get base filename
         const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
         
-        // Watch for the specific PDF report to be ready
-        const reportUrl = await waitForNewReport(baseFilename, 60); // Wait up to 60 seconds
+        // Check if file exists and wait for it
+        const reportUrl = await checkForPdfFile(baseFilename, 45); // Wait up to 45 seconds
 
         // Remove processing message
         Office.context.mailbox.item.notificationMessages.removeAsync("processing");
@@ -119,9 +119,9 @@ async function triggerFlowFromRibbon(event) {
 }
 
 /* =====================================================
-   SHAREPOINT FILE WATCHER
+   CHECK FOR PDF FILE IN SHAREPOINT
 ===================================================== */
-async function waitForNewReport(baseFilename, timeoutSeconds) {
+async function checkForPdfFile(baseFilename, timeoutSeconds) {
     const siteUrl = "https://datasciencewiizardsai-my.sharepoint.com";
     const folderPath = "personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments";
     
@@ -129,7 +129,7 @@ async function waitForNewReport(baseFilename, timeoutSeconds) {
     const expectedPdfFilename = `${baseFilename}_claimfraud_report.pdf`;
     const pdfUrl = `${siteUrl}/${folderPath}/${expectedPdfFilename}`;
     
-    console.log(`Waiting for PDF: ${pdfUrl}`);
+    console.log(`Checking for PDF: ${pdfUrl}`);
     
     const startTime = Date.now();
     const pollInterval = 3000; // Check every 3 seconds
@@ -137,27 +137,33 @@ async function waitForNewReport(baseFilename, timeoutSeconds) {
     
     while (Date.now() - startTime < maxWaitTime) {
         try {
-            // Try to check if the file exists using a HEAD request
+            // Try to fetch the file with a HEAD request to check existence
             const response = await fetch(pdfUrl, {
                 method: 'HEAD',
-                mode: 'no-cors' // This will prevent CORS errors but won't give us response details
+                credentials: 'include' // Include cookies for authentication
             });
             
-            // If we reach here without error, assume file might be available
-            // Note: with no-cors, we can't check response.ok, but we also won't get CORS errors
-            console.log(`File check attempt - elapsed time: ${Date.now() - startTime}ms`);
+            if (response.ok || response.type === 'opaque') {
+                // File exists or request succeeded
+                console.log(`PDF file found: ${pdfUrl}`);
+                return pdfUrl;
+            } else if (response.status === 404) {
+                console.log(`File not found yet (404), waiting...`);
+            } else {
+                console.log(`Response status: ${response.status}`);
+            }
             
         } catch (error) {
-            console.log('File not yet available:', error.message);
+            console.log('Error checking file:', error.message);
         }
         
         // Wait before next poll
         await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
     
-    // After waiting, return the PDF URL to open it
-    console.log(`Opening PDF after ${timeoutSeconds} seconds: ${pdfUrl}`);
-    return pdfUrl;
+    // If file not found after timeout, return null
+    console.log(`PDF file not found after ${timeoutSeconds} seconds`);
+    return null;
 }
 
 /* =====================================================
