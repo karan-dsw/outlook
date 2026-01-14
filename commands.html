@@ -199,90 +199,38 @@ async function getAttachmentContents(item) {
 
     for (const att of item.attachments) {
         console.log(`Processing attachment: ${att.name}, ID: ${att.id}`);
-        let attachmentRetrieved = false;
-
-        // Try REST API first
+        
         try {
-            const token = await getCallbackToken();
-            const restUrl = Office.context.mailbox.restUrl;
-            
-            if (token && restUrl) {
-                const itemId = Office.context.mailbox.convertToRestId(
-                    item.itemId,
-                    Office.MailboxEnums.RestVersion.v2_0
-                );
-                
-                const attachmentUrl = `${restUrl}/v2.0/me/messages/${itemId}/attachments/${att.id}/$value`;
-                
-                console.log(`Attempting REST API call for ${att.name}`);
-                const response = await fetch(attachmentUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    }
-                });
-
-                if (response.ok) {
-                    const blob = await response.blob();
-                    if (blob.size > 0) {
-                        const base64Content = await blobToBase64(blob);
-                        
-                        console.log(`REST API success for ${att.name}, size: ${blob.size}`);
+            await new Promise(resolve => {
+                item.getAttachmentContentAsync(att.id, res => {
+                    if (res.status === Office.AsyncResultStatus.Succeeded) {
+                        console.log(`Successfully retrieved ${att.name}, content length: ${res.value.content.length}`);
                         results.push({
                             id: att.id,
                             name: att.name,
                             contentType: att.contentType,
                             size: att.size,
-                            content: base64Content,
-                            format: 'base64'
+                            content: res.value.content,
+                            format: res.value.format
                         });
-                        attachmentRetrieved = true;
                     } else {
-                        console.warn(`REST API returned empty blob for ${att.name}`);
+                        console.error(`Failed to retrieve ${att.name}:`, res.error);
+                        results.push({
+                            id: att.id,
+                            name: att.name,
+                            error: res.error ? res.error.message : 'Unknown error'
+                        });
                     }
-                } else {
-                    console.warn(`REST API failed for ${att.name}: ${response.status} ${response.statusText}`);
-                }
-            }
+                    resolve();
+                });
+            });
         } catch (error) {
-            console.error(`REST API error for ${att.name}:`, error);
-        }
-
-        // Fallback to getAttachmentContentAsync if REST API didn't work
-        if (!attachmentRetrieved) {
-            console.log(`Using fallback method for ${att.name}`);
-            try {
-                await new Promise(resolve => {
-                    item.getAttachmentContentAsync(att.id, res => {
-                        if (res.status === Office.AsyncResultStatus.Succeeded) {
-                            console.log(`Fallback success for ${att.name}`);
-                            results.push({
-                                id: att.id,
-                                name: att.name,
-                                contentType: att.contentType,
-                                size: att.size,
-                                content: res.value.content,
-                                format: res.value.format
-                            });
-                        } else {
-                            console.error(`Fallback failed for ${att.name}:`, res.error);
-                            results.push({
-                                id: att.id,
-                                name: att.name,
-                                error: res.error ? res.error.message : 'Unknown error'
-                            });
-                        }
-                        resolve();
-                    });
-                });
-            } catch (error) {
-                console.error(`Exception in fallback for ${att.name}:`, error);
-                results.push({
-                    id: att.id,
-                    name: att.name,
-                    error: error.message
-                });
-            }
+            console.error(`Exception retrieving ${att.name}:`, error);
+            results.push({
+                id: att.id,
+                name: att.name,
+                error: error.message
+            });
         }
     }
 
@@ -538,5 +486,4 @@ Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
     </script>
 </body>
 </html> -->
-
 
