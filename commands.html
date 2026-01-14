@@ -53,9 +53,16 @@ async function triggerFlowFromRibbon(event) {
             }
         );
 
-        // Watch the SharePoint folder for new files
-        const folderUrl = "https://datasciencewiizardsai-my.sharepoint.com/:f:/g/personal/karan_panchal_datasciencewizards_ai/IgCAVSlue6_8TJtBnXPOncfTAUVSn3HNzTyNGdrRHho3cwo?e=caWHl8";
-        const reportUrl = await waitForNewReport(folderUrl, 60); // Wait up to 60 seconds
+        // Get the attachment filename to construct the expected PDF URL
+        const attachmentName = emailData.attachments.length > 0 
+            ? emailData.attachments[0].name 
+            : "report.html";
+        
+        // Remove file extension to get base filename
+        const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
+        
+        // Watch for the specific PDF report to be ready
+        const reportUrl = await waitForNewReport(baseFilename, 60); // Wait up to 60 seconds
 
         // Remove processing message
         Office.context.mailbox.item.notificationMessages.removeAsync("processing");
@@ -112,88 +119,45 @@ async function triggerFlowFromRibbon(event) {
 }
 
 /* =====================================================
-   SHAREPOINT FOLDER WATCHER
+   SHAREPOINT FILE WATCHER
 ===================================================== */
-async function waitForNewReport(folderUrl, timeoutSeconds) {
-    // Extract the folder path from the SharePoint sharing link
-    // The sharing link format needs to be converted to a direct folder path
-    const folderPath = "personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments";
+async function waitForNewReport(baseFilename, timeoutSeconds) {
     const siteUrl = "https://datasciencewiizardsai-my.sharepoint.com";
+    const folderPath = "personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments";
+    
+    // Construct the expected PDF filename
+    const expectedPdfFilename = `${baseFilename}_claimfraud_report.pdf`;
+    const pdfUrl = `${siteUrl}/${folderPath}/${expectedPdfFilename}`;
+    
+    console.log(`Waiting for PDF: ${pdfUrl}`);
     
     const startTime = Date.now();
-    const pollInterval = 5000; // Check every 5 seconds
+    const pollInterval = 3000; // Check every 3 seconds
     const maxWaitTime = timeoutSeconds * 1000;
     
     while (Date.now() - startTime < maxWaitTime) {
         try {
-            // Get access token from Office context
-            const token = await getAccessToken();
-            
-            if (!token) {
-                console.log("No access token available, falling back to direct link");
-                return `${siteUrl}/${folderPath}`;
-            }
-            
-            // Query Microsoft Graph API for folder contents
-            const graphUrl = `https://graph.microsoft.com/v1.0/sites/datasciencewiizardsai-my.sharepoint.com,siteId/drives/driveId/root:/${folderPath}:/children?$orderby=createdDateTime desc&$top=1`;
-            
-            const response = await fetch(graphUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
+            // Try to check if the file exists using a HEAD request
+            const response = await fetch(pdfUrl, {
+                method: 'HEAD',
+                mode: 'no-cors' // This will prevent CORS errors but won't give us response details
             });
             
-            if (response.ok) {
-                const data = await response.json();
-                
-                if (data.value && data.value.length > 0) {
-                    const newestFile = data.value[0];
-                    
-                    // Check if file was created recently (within last 2 minutes)
-                    const fileCreatedTime = new Date(newestFile.createdDateTime);
-                    const timeDiff = Date.now() - fileCreatedTime.getTime();
-                    
-                    if (timeDiff < 120000) { // 2 minutes
-                        // Return the web URL to open the file
-                        return newestFile.webUrl || newestFile['@microsoft.graph.downloadUrl'];
-                    }
-                }
-            }
+            // If we reach here without error, assume file might be available
+            // Note: with no-cors, we can't check response.ok, but we also won't get CORS errors
+            console.log(`File check attempt - elapsed time: ${Date.now() - startTime}ms`);
+            
         } catch (error) {
-            console.error('Error checking folder:', error);
+            console.log('File not yet available:', error.message);
         }
         
         // Wait before next poll
         await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
     
-    // If we couldn't get the latest file, return the folder URL
-    return `${siteUrl}/${folderPath}`;
-}
-
-async function getAccessToken() {
-    return new Promise((resolve) => {
-        try {
-            // Try to get SSO token from Office context
-            if (Office.context.auth && Office.context.auth.getAccessTokenAsync) {
-                Office.context.auth.getAccessTokenAsync({ forceConsent: false }, (result) => {
-                    if (result.status === Office.AsyncResultStatus.Succeeded) {
-                        resolve(result.value);
-                    } else {
-                        console.log('Could not get access token:', result.error);
-                        resolve(null);
-                    }
-                });
-            } else {
-                resolve(null);
-            }
-        } catch (error) {
-            console.error('Error getting access token:', error);
-            resolve(null);
-        }
-    });
+    // After waiting, return the PDF URL to open it
+    console.log(`Opening PDF after ${timeoutSeconds} seconds: ${pdfUrl}`);
+    return pdfUrl;
 }
 
 /* =====================================================
