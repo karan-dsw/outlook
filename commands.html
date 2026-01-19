@@ -63,7 +63,7 @@ async function triggerFlowFromRibbon(event) {
         );
 
         // Wait 30 seconds
-        await new Promise(resolve => setTimeout(resolve, 30000));
+        await new Promise(resolve => setTimeout(resolve, 20000));
 
         // Remove processing message
         Office.context.mailbox.item.notificationMessages.removeAsync("processing");
@@ -486,4 +486,5 @@ Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
     </script>
 </body>
 </html> -->
+
 
