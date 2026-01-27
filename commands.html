@@ -129,11 +129,20 @@
 
         // Get email identifiers
         const itemId = item.itemId || "";
-        const conversationId = item.conversationId || "";
+        let conversationId = "";
+        
+        // Try to get conversation ID
+        if (item.conversationId) {
+            conversationId = item.conversationId;
+        } else if (item.itemId) {
+            // Some versions don't expose conversationId directly
+            conversationId = "";
+        }
         
         console.log("Item ID (EWS format):", itemId);
         console.log("Conversation ID:", conversationId);
         console.log("Internet Message ID:", item.internetMessageId);
+        console.log("All available properties:", Object.keys(item));
 
         return {
             triggeredAt: new Date().toISOString(),
