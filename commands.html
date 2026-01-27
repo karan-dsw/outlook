@@ -127,6 +127,23 @@
         const body = await getBody(item);
         const attachments = await getAttachmentContents(item);
 
+        // Get both EWS and REST format IDs
+        const ewsItemId = item.itemId || "";
+        let restItemId = "";
+        let emailWebLink = "";
+
+        if (ewsItemId) {
+            try {
+                restItemId = Office.context.mailbox.convertToRestId(
+                    ewsItemId,
+                    Office.MailboxEnums.RestVersion.v2_0
+                );
+                emailWebLink = `https://outlook.office.com/mail/inbox/id/${restItemId}`;
+            } catch (error) {
+                console.error("Error converting to REST ID:", error);
+            }
+        }
+
         return {
             triggeredAt: new Date().toISOString(),
 
@@ -144,7 +161,9 @@
 
             internetMessageId: item.internetMessageId || "",
 
-            itemId: item.itemId || "",
+            itemId: ewsItemId,
+            restItemId: restItemId,
+            emailWebLink: emailWebLink,
 
             hasAttachments: attachments.length > 0,
             attachmentCount: attachments.length,
