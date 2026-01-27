@@ -126,6 +126,7 @@ async function getEmailData() {
     const subject = await getSubject(item);
     const body = await getBody(item);
     const attachments = await getAttachmentContents(item);
+    const webLink = await getEmailWebLink(item);
 
     return {
         triggeredAt: new Date().toISOString(),
@@ -143,6 +144,8 @@ async function getEmailData() {
             new Date().toISOString(),
 
         internetMessageId: item.internetMessageId || "",
+
+        webLink: webLink,
 
         hasAttachments: attachments.length > 0,
         attachmentCount: attachments.length,
@@ -185,6 +188,30 @@ function getSender(item) {
     if (item.from.displayName) return item.from.displayName;
 
     return "Unknown";
+}
+
+function getEmailWebLink(item) {
+    return new Promise(resolve => {
+        if (!item.itemId) {
+            resolve("");
+            return;
+        }
+
+        try {
+            // Convert to REST ID format
+            const restId = Office.context.mailbox.convertToRestId(
+                item.itemId,
+                Office.MailboxEnums.RestVersion.v2_0
+            );
+
+            // Construct Outlook Web App link
+            const webLink = `https://outlook.office365.com/mail/deeplink/read/${restId}`;
+            resolve(webLink);
+        } catch (error) {
+            console.error("Error creating weblink:", error);
+            resolve("");
+        }
+    });
 }
 
 /* =====================================================
@@ -486,5 +513,4 @@ Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
     </script>
 </body>
 </html> -->
-
 
