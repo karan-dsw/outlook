@@ -127,49 +127,13 @@
         const body = await getBody(item);
         const attachments = await getAttachmentContents(item);
 
-        // Get item ID - try REST format first
-        const ewsItemId = item.itemId || "";
-        let restItemId = "";
-        let emailWebLink = "";
-
-        if (ewsItemId) {
-            // Try method 1: getItemIdAsync for REST format (newer API)
-            try {
-                restItemId = await new Promise((resolve, reject) => {
-                    if (typeof Office.context.mailbox.item.getItemIdAsync === 'function') {
-                        Office.context.mailbox.item.getItemIdAsync((result) => {
-                            if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                console.log("REST ID from getItemIdAsync:", result.value);
-                                resolve(result.value);
-                            } else {
-                                reject(new Error("getItemIdAsync failed"));
-                            }
-                        });
-                    } else {
-                        reject(new Error("getItemIdAsync not available"));
-                    }
-                });
-            } catch (error) {
-                console.log("getItemIdAsync not available, trying convertToRestId");
-                
-                // Try method 2: convertToRestId
-                try {
-                    if (typeof Office.context.mailbox.convertToRestId === 'function') {
-                        restItemId = Office.context.mailbox.convertToRestId(ewsItemId, Office.MailboxEnums.RestVersion.v2_0);
-                        console.log("Converted REST ID:", restItemId);
-                    } else {
-                        throw new Error("convertToRestId not available");
-                    }
-                } catch (convertError) {
-                    console.error("Conversion methods failed:", convertError);
-                    // Fallback: use EWS ID
-                    restItemId = ewsItemId;
-                }
-            }
-
-            emailWebLink = `https://outlook.office.com/mail/inbox/id/${encodeURIComponent(restItemId)}`;
-            console.log("Final Email Link:", emailWebLink);
-        }
+        // Get email identifiers
+        const itemId = item.itemId || "";
+        const conversationId = item.conversationId || "";
+        
+        console.log("Item ID (EWS format):", itemId);
+        console.log("Conversation ID:", conversationId);
+        console.log("Internet Message ID:", item.internetMessageId);
 
         return {
             triggeredAt: new Date().toISOString(),
@@ -188,9 +152,8 @@
 
             internetMessageId: item.internetMessageId || "",
 
-            itemId: ewsItemId,
-            restItemId: restItemId,
-            emailWebLink: emailWebLink,
+            itemId: itemId,
+            conversationId: conversationId,
 
             hasAttachments: attachments.length > 0,
             attachmentCount: attachments.length,
