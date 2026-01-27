@@ -127,27 +127,48 @@
         const body = await getBody(item);
         const attachments = await getAttachmentContents(item);
 
-        // Get both EWS and REST format IDs
+        // Get item ID - try REST format first
         const ewsItemId = item.itemId || "";
         let restItemId = "";
         let emailWebLink = "";
 
         if (ewsItemId) {
+            // Try method 1: getItemIdAsync for REST format (newer API)
             try {
-                // Try to convert using the correct enum
-                restItemId = Office.context.mailbox.convertToRestId(
-                    ewsItemId,
-                    "v2.0"
-                );
-                console.log("Original EWS ID:", ewsItemId);
-                console.log("Converted REST ID:", restItemId);
-                emailWebLink = `https://outlook.office.com/mail/inbox/id/${encodeURIComponent(restItemId)}`;
+                restItemId = await new Promise((resolve, reject) => {
+                    if (typeof Office.context.mailbox.item.getItemIdAsync === 'function') {
+                        Office.context.mailbox.item.getItemIdAsync((result) => {
+                            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                console.log("REST ID from getItemIdAsync:", result.value);
+                                resolve(result.value);
+                            } else {
+                                reject(new Error("getItemIdAsync failed"));
+                            }
+                        });
+                    } else {
+                        reject(new Error("getItemIdAsync not available"));
+                    }
+                });
             } catch (error) {
-                console.error("Error converting to REST ID:", error);
-                // Fallback: use EWS ID directly (might still work)
-                restItemId = ewsItemId;
-                emailWebLink = `https://outlook.office.com/mail/inbox/id/${encodeURIComponent(ewsItemId)}`;
+                console.log("getItemIdAsync not available, trying convertToRestId");
+                
+                // Try method 2: convertToRestId
+                try {
+                    if (typeof Office.context.mailbox.convertToRestId === 'function') {
+                        restItemId = Office.context.mailbox.convertToRestId(ewsItemId, Office.MailboxEnums.RestVersion.v2_0);
+                        console.log("Converted REST ID:", restItemId);
+                    } else {
+                        throw new Error("convertToRestId not available");
+                    }
+                } catch (convertError) {
+                    console.error("Conversion methods failed:", convertError);
+                    // Fallback: use EWS ID
+                    restItemId = ewsItemId;
+                }
             }
+
+            emailWebLink = `https://outlook.office.com/mail/inbox/id/${encodeURIComponent(restItemId)}`;
+            console.log("Final Email Link:", emailWebLink);
         }
 
         return {
