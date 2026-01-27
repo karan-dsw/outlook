@@ -134,13 +134,19 @@
 
         if (ewsItemId) {
             try {
+                // Try to convert using the correct enum
                 restItemId = Office.context.mailbox.convertToRestId(
                     ewsItemId,
-                    Office.MailboxEnums.RestVersion.v2_0
+                    "v2.0"
                 );
-                emailWebLink = `https://outlook.office.com/mail/inbox/id/${restItemId}`;
+                console.log("Original EWS ID:", ewsItemId);
+                console.log("Converted REST ID:", restItemId);
+                emailWebLink = `https://outlook.office.com/mail/inbox/id/${encodeURIComponent(restItemId)}`;
             } catch (error) {
                 console.error("Error converting to REST ID:", error);
+                // Fallback: use EWS ID directly (might still work)
+                restItemId = ewsItemId;
+                emailWebLink = `https://outlook.office.com/mail/inbox/id/${encodeURIComponent(ewsItemId)}`;
             }
         }
 
