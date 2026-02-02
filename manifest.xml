@@ -9,8 +9,8 @@
   <Version>1.0.0.2</Version>
   <ProviderName>Data Science Wizards</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Auto Process"/>
-  <Description DefaultValue="Trigger Underwriting or Claims Workflow for Automated Processing"/>
+  <DisplayName DefaultValue="Underwriting"/>
+  <Description DefaultValue="Predicitve Underwriting for Claims Likelihood"/>
   <IconUrl DefaultValue="https://karan-dsw.github.io/outlook/logo64.png"/>
   <HighResolutionIconUrl DefaultValue="https://karan-dsw.github.io/outlook/logo128.png"/>
   <SupportUrl DefaultValue="https://karan-dsw.github.io/outlook/support"/>
@@ -33,7 +33,7 @@
     <Form xsi:type="ItemRead">
       <DesktopSettings>
         <SourceLocation DefaultValue="https://karan-dsw.github.io/outlook/taskpane.html"/>
-        <RequestedHeight>250</RequestedHeight>
+        <RequestedHeight>500</RequestedHeight>
       </DesktopSettings>
     </Form>
   </FormSettings>
@@ -77,8 +77,8 @@
                     <bt:Image size="32" resid="Icon.32x32"/>
                     <bt:Image size="80" resid="Icon.80x80"/>
                   </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>triggerFlowFromRibbon</FunctionName>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="Taskpane.Url"/>
                   </Action>
                 </Control>
               </Group>
@@ -101,7 +101,7 @@
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="Flow Actions"/>
-        <bt:String id="TriggerButton.Label" DefaultValue="Auto Process"/>
+        <bt:String id="TriggerButton.Label" DefaultValue="Underwriting"/>
         <bt:String id="TriggerButton.SupertipTitle" DefaultValue="Trigger Power Automate"/>
       </bt:ShortStrings>
       <bt:LongStrings>
