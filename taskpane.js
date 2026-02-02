@@ -1,507 +1,188 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-</head>
+let mailboxItem = null;
 
-<body>
-<script>
-Office.onReady(() => {
-    console.log("Commands.html loaded");
+Office.onReady((info) => {
+    if (info.host === Office.HostType.Outlook) {
+        // Store the mailbox item reference
+        mailboxItem = Office.context.mailbox.item;
+        
+        // Display current email info
+        displayEmailInfo();
+        
+        // Set up form submission
+        const form = document.getElementById('underwritingForm');
+        if (form) {
+            form.addEventListener('submit', handleFormSubmit);
+        }
+        
+        console.log('Office.js initialized successfully - Form ready');
+    }
 });
 
-/* =====================================================
-   RIBBON ACTION
-===================================================== */
-async function triggerFlowFromRibbon(event) {
+function displayEmailInfo() {
+    if (!mailboxItem) {
+        console.error('Mailbox item not available');
+        return;
+    }
+    
     try {
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "progress",
-            {
-                type: "progressIndicator",
-                message: "Analyzing email and sending to workflow..."
-            }
-        );
-
-        const emailData = await getEmailData();
-
-        const flowUrl =
-            "https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/89c12382226642a4907cd110e9e7ab87/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Nbz7sUIbNoHlSBt_KVnF3CFKCCf9lPYn-LbIxZsWouA";
-        const response = await fetch(flowUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(emailData)
-        });
-
-        Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`HTTP ${response.status}: ${err}`);
+        // Get subject
+        const subject = mailboxItem.subject || 'No subject';
+        const subjectElement = document.getElementById('emailSubject');
+        if (subjectElement) {
+            subjectElement.textContent = subject;
         }
-
-        // Get the attachment filename to construct the report URL
-        const attachmentName = emailData.attachments.length > 0 
-            ? emailData.attachments[0].name 
-            : "report.html";
         
-        // Remove file extension and add .html
-        const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
-        const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_claimfraud_report.pdf`;
-
-        // Show processing message
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "processing",
-            {
-                type: "informationalMessage",
-                message: "Processing... Report will be ready in 30 seconds",
-                icon: "Icon.80x80",
-                persistent: true
-            }
-        );
-
-        // Wait 30 seconds
-        await new Promise(resolve => setTimeout(resolve, 30000));
-
-        // Remove processing message
-        Office.context.mailbox.item.notificationMessages.removeAsync("processing");
-
-        // Show success message with clickable link
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "success",
-            {
-                type: "informationalMessage",
-                message: `Report is ready! Click here to view: ${reportUrl}`,
-                icon: "Icon.80x80",
-                persistent: true
-            }
-        );
-
-        // Automatically open the report in a new tab
-        window.open(reportUrl, '_blank');
-
+        // Get sender
+        const from = mailboxItem.from 
+            ? (mailboxItem.from.emailAddress || mailboxItem.from.displayName || 'Unknown')
+            : 'Unknown';
+        const fromElement = document.getElementById('emailFrom');
+        if (fromElement) {
+            fromElement.textContent = from;
+        }
+        
     } catch (error) {
-        console.error(error);
-
-        Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "error",
-            {
-                type: "errorMessage",
-                message: "Processing failed: " + error.message
-            }
-        );
-    } finally {
-        event.completed();
+        console.error('Error displaying email info:', error);
     }
 }
 
-/* =====================================================
-   EMAIL DATA COLLECTION
-===================================================== */
-async function getEmailData() {
-    const item = Office.context.mailbox.item;
-
-    if (!item) throw new Error("No email context");
-
-    const subject = await getSubject(item);
-    const body = await getBody(item);
-    const attachments = await getAttachmentContents(item);
-
-    return {
-        triggeredAt: new Date().toISOString(),
-
-        userEmail: Office.context.mailbox.userProfile.emailAddress || "",
-
-        subject: subject,
-        body: body,
-
-        from: getSender(item),
-
-        receivedDateTime:
-            item.dateTimeCreated ||
-            item.dateTimeModified ||
-            new Date().toISOString(),
-
-        internetMessageId: item.internetMessageId || "",
-
-        hasAttachments: attachments.length > 0,
-        attachmentCount: attachments.length,
-        attachments: attachments
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    
+    const submitButton = document.getElementById('submitButton');
+    const statusDiv = document.getElementById('statusMessage');
+    
+    // Get form data
+    const formData = {
+        policyNumber: document.getElementById('policyNumber').value,
+        claimType: document.getElementById('claimType').value,
+        claimAmount: document.getElementById('claimAmount').value || null,
+        priority: document.getElementById('priority').value,
+        notes: document.getElementById('notes').value,
+        // Include email context
+        emailSubject: mailboxItem.subject || 'No subject',
+        emailFrom: mailboxItem.from ? mailboxItem.from.emailAddress : 'Unknown',
+        itemId: mailboxItem.itemId || 'Unknown',
+        conversationId: mailboxItem.conversationId || 'Unknown',
+        submittedAt: new Date().toISOString(),
+        submittedBy: Office.context.mailbox.userProfile.emailAddress
     };
-}
-
-/* =====================================================
-   HELPERS
-===================================================== */
-function getSubject(item) {
-    return new Promise(resolve => {
-        if (typeof item.subject === "string") {
-            resolve(item.subject);
-        } else {
-            item.subject.getAsync(result =>
-                resolve(result.status === Office.AsyncResultStatus.Succeeded
-                    ? result.value
-                    : "Subject unavailable")
-            );
-        }
-    });
-}
-
-function getBody(item) {
-    return new Promise(resolve => {
-        item.body.getAsync(Office.CoercionType.Text, result =>
-            resolve(result.status === Office.AsyncResultStatus.Succeeded
-                ? result.value
-                : "Body unavailable")
-        );
-    });
-}
-
-function getSender(item) {
-    if (!item.from) return "Unknown";
-
-    if (typeof item.from === "string") return item.from;
-    if (item.from.emailAddress) return item.from.emailAddress;
-    if (item.from.displayName) return item.from.displayName;
-
-    return "Unknown";
-}
-
-/* =====================================================
-   ATTACHMENT CONTENT (BASE64)
-===================================================== */
-async function getAttachmentContents(item) {
-    if (!item.attachments || item.attachments.length === 0) {
-        return [];
+    
+    console.log('Form data collected:', formData);
+    
+    // Disable submit button
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+    
+    showStatus('Saving form data...', 'info');
+    
+    try {
+        // Store in localStorage
+        const storageKey = `underwriting_${Date.now()}_${formData.itemId}`;
+        localStorage.setItem(storageKey, JSON.stringify(formData));
+        
+        // Also maintain a list of all submissions
+        let allSubmissions = JSON.parse(localStorage.getItem('underwriting_submissions') || '[]');
+        allSubmissions.push({
+            key: storageKey,
+            timestamp: formData.submittedAt,
+            policyNumber: formData.policyNumber,
+            claimType: formData.claimType,
+            priority: formData.priority
+        });
+        localStorage.setItem('underwriting_submissions', JSON.stringify(allSubmissions));
+        
+        console.log('✅ Form data saved successfully to localStorage');
+        console.log('Storage Key:', storageKey);
+        console.log('Total submissions:', allSubmissions.length);
+        
+        showStatus('Form data saved successfully!', 'success');
+        
+        // Reset form after successful submission
+        setTimeout(() => {
+            document.getElementById('underwritingForm').reset();
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit';
+        }, 1500);
+        
+        // Optionally close the dialog after submission
+        // setTimeout(() => closeForm(), 3000);
+        
+    } catch (error) {
+        console.error('Error saving form data:', error);
+        showStatus('Failed to save form: ' + error.message, 'error');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Submit';
     }
+}
 
-    // Get fresh callback token for REST API access
-    const token = await getCallbackToken();
-    const restUrl = Office.context.mailbox.restUrl;
-    const itemId = Office.context.mailbox.convertToRestId(
-        item.itemId,
-        Office.MailboxEnums.RestVersion.v2_0
-    );
+function closeForm() {
+    // If opened as a dialog, send a message to close
+    if (Office.context.ui.messageParent) {
+        Office.context.ui.messageParent(JSON.stringify({ action: 'close' }));
+    }
+    
+    // If in taskpane, just show a message
+    console.log('Close form requested');
+}
 
-    const results = [];
-
-    for (const att of item.attachments) {
-        try {
-            if (token && restUrl) {
-                // Use REST API for fresh attachment content
-                const attachmentUrl = `${restUrl}/v2.0/me/messages/${itemId}/attachments/${att.id}/$value`;
-                
-                const response = await fetch(attachmentUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    }
-                });
-
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const base64Content = await blobToBase64(blob);
-                    
-                    results.push({
-                        id: att.id,
-                        name: att.name,
-                        contentType: att.contentType,
-                        size: att.size,
-                        content: base64Content,
-                        format: 'base64'
-                    });
-                    continue;
-                }
-            }
-
-            // Fallback to original method if REST API fails
-            await new Promise(resolve => {
-                item.getAttachmentContentAsync(att.id, res => {
-                    if (res.status === Office.AsyncResultStatus.Succeeded) {
-                        results.push({
-                            id: att.id,
-                            name: att.name,
-                            contentType: att.contentType,
-                            size: att.size,
-                            content: res.value.content,   // Base64
-                            format: res.value.format
-                        });
-                    } else {
-                        results.push({
-                            id: att.id,
-                            name: att.name,
-                            error: res.error.message
-                        });
-                    }
-                    resolve();
-                });
-            });
-
-        } catch (error) {
-            console.error('Error fetching attachment:', error);
-            results.push({
-                id: att.id,
-                name: att.name,
-                error: error.message
-            });
+function showStatus(message, type) {
+    const statusDiv = document.getElementById('statusMessage');
+    if (statusDiv) {
+        statusDiv.textContent = message;
+        statusDiv.className = 'status ' + type;
+        statusDiv.style.display = 'block';
+        
+        // Auto-hide after 5 seconds for success messages
+        if (type === 'success') {
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
         }
     }
-
-    return results;
 }
 
-/* =====================================================
-   GET FRESH CALLBACK TOKEN
-===================================================== */
-async function getCallbackToken() {
-    return new Promise((resolve) => {
-        Office.context.mailbox.getCallbackTokenAsync({ isRest: true }, (result) => {
-            if (result.status === Office.AsyncResultStatus.Succeeded) {
-                resolve(result.value);
-            } else {
-                console.error('Error getting callback token:', result.error);
-                resolve(null);
-            }
-        });
+// Helper function to retrieve all stored submissions (you can call this from console)
+function getAllSubmissions() {
+    const submissions = JSON.parse(localStorage.getItem('underwriting_submissions') || '[]');
+    console.log('All submissions:', submissions);
+    return submissions;
+}
+
+// Helper function to get a specific submission by key
+function getSubmission(key) {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+}
+
+// Helper function to export all data (you can call this from console)
+function exportAllData() {
+    const submissions = JSON.parse(localStorage.getItem('underwriting_submissions') || '[]');
+    const allData = submissions.map(sub => {
+        const data = localStorage.getItem(sub.key);
+        return data ? JSON.parse(data) : null;
+    }).filter(item => item !== null);
+    
+    console.log('Exported all data:', allData);
+    
+    // Download as JSON file
+    const dataStr = JSON.stringify(allData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `underwriting_submissions_${new Date().toISOString()}.json`;
+    link.click();
+    
+    return allData;
+}
+
+// Helper function to clear all stored data (you can call this from console)
+function clearAllSubmissions() {
+    const submissions = JSON.parse(localStorage.getItem('underwriting_submissions') || '[]');
+    submissions.forEach(sub => {
+        localStorage.removeItem(sub.key);
     });
+    localStorage.removeItem('underwriting_submissions');
+    console.log('All submissions cleared');
 }
-
-/* =====================================================
-   BLOB TO BASE64 CONVERTER
-===================================================== */
-function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64data = reader.result.split(',')[1];
-            resolve(base64data);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
-
-/* =====================================================
-   REGISTER COMMAND
-===================================================== */
-Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
-</script>
-</body>
-</html>
-
-
-<!-- <!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-</head>
-<body>
-    <script>
-        Office.onReady(() => {
-            console.log('Commands.html loaded and ready');
-        });
-
-        // This function is called when the ribbon button is clicked
-        async function triggerFlowFromRibbon(event) {
-            console.log('Trigger Flow button clicked from ribbon');
-            
-            try {
-                // Show notification that processing has started
-                Office.context.mailbox.item.notificationMessages.addAsync(
-                    "progress",
-                    {
-                        type: "progressIndicator",
-                        message: "Analyzing email and triggering flow..."
-                    }
-                );
-                
-                // Get email data including body for analysis
-                const emailData = await getEmailData();
-                
-                console.log('Email data collected:', emailData);
-                
-                // Your Power Automate flow URL
-                const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d24491dc744c4daaa0ed8c41d2afd928/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=elpbeJ6uwo9d6new1ea8hRBciI19lRaX-Xp0wLaYLec';
-                
-                // Call Power Automate
-                const response = await fetch(flowUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(emailData)
-                });
-                
-                // Remove progress indicator
-                Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-                
-                if (response.ok) {
-                    // Show success notification
-                    Office.context.mailbox.item.notificationMessages.addAsync(
-                        "success",
-                        {
-                            type: "informationalMessage",
-                            message: "Email analyzed and flow triggered successfully! ✓",
-                            
-                            persistent: false
-                        }
-                    );
-                    
-                    console.log('Flow triggered successfully');
-                } else {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-            } catch (error) {
-                console.error('Error triggering flow:', error);
-                
-                // Remove progress indicator if still showing
-                Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-                
-                // Show error notification
-                Office.context.mailbox.item.notificationMessages.addAsync(
-                    "error",
-                    {
-                        type: "errorMessage",
-                        message: "Failed to trigger flow: " + error.message
-                    }
-                );
-            } finally {
-                // Signal that the function has completed
-                event.completed();
-            }
-        }
-
-        async function getEmailData() {
-            return new Promise((resolve, reject) => {
-                const item = Office.context.mailbox.item;
-                
-                if (!item) {
-                    reject(new Error('No email item available'));
-                    return;
-                }
-                
-                // Initialize data object
-                const emailData = {
-                    itemId: item.itemId || '',
-                    conversationId: item.conversationId || '',
-                    triggeredAt: new Date().toISOString(),
-                    userEmail: Office.context.mailbox.userProfile.emailAddress || '',
-                    subject: '',
-                    from: '',
-                    body: '',
-                    hasAttachments: false,
-                    attachmentCount: 0
-                };
-                
-                // Get subject
-                const getSubject = () => {
-                    return new Promise((resolveSubject) => {
-                        // In read mode, subject is a property
-                        if (typeof item.subject === 'string') {
-                            resolveSubject(item.subject);
-                        } else if (item.subject && typeof item.subject.getAsync === 'function') {
-                            item.subject.getAsync((result) => {
-                                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                    resolveSubject(result.value);
-                                } else {
-                                    console.error('Error getting subject:', result.error);
-                                    resolveSubject('Unable to retrieve subject');
-                                }
-                            });
-                        } else {
-                            resolveSubject('Subject not available');
-                        }
-                    });
-                };
-                
-                // Get email body for analysis
-                const getBody = () => {
-                    return new Promise((resolveBody) => {
-                        if (item.body && typeof item.body.getAsync === 'function') {
-                            item.body.getAsync(Office.CoercionType.Text, (result) => {
-                                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                    resolveBody(result.value);
-                                } else {
-                                    console.error('Error getting body:', result.error);
-                                    resolveBody('Unable to retrieve body');
-                                }
-                            });
-                        } else {
-                            resolveBody('Body not available');
-                        }
-                    });
-                };
-                
-                // Get sender
-                const getFrom = () => {
-                    if (item.from) {
-                        if (typeof item.from === 'string') {
-                            return item.from;
-                        } else if (item.from.emailAddress) {
-                            return item.from.emailAddress;
-                        } else if (item.from.displayName) {
-                            return item.from.displayName;
-                        }
-                    }
-                    return 'Unknown sender';
-                };
-                
-                // Get attachment info
-                const getAttachments = () => {
-                    if (item.attachments && item.attachments.length > 0) {
-                        return {
-                            hasAttachments: true,
-                            count: item.attachments.length,
-                            attachments: item.attachments.map(att => ({
-                                name: att.name,
-                                contentType: att.contentType,
-                                size: att.size,
-                                id: att.id
-                            }))
-                        };
-                    }
-                    return { hasAttachments: false, count: 0, attachments: [] };
-                };
-                
-                // Collect all data
-                Promise.all([getSubject(), getBody()]).then(([subject, body]) => {
-                    emailData.subject = subject;
-                    emailData.body = body;
-                    emailData.from = getFrom();
-                    
-                    const attachmentInfo = getAttachments();
-                    emailData.hasAttachments = attachmentInfo.hasAttachments;
-                    emailData.attachmentCount = attachmentInfo.count;
-                    emailData.attachments = attachmentInfo.attachments;
-                    
-                    console.log('Email data prepared:', {
-                        subject: emailData.subject,
-                        from: emailData.from,
-                        bodyLength: emailData.body.length,
-                        attachments: emailData.attachmentCount
-                    });
-                    
-                    resolve(emailData);
-                }).catch(error => {
-                    console.error('Error collecting email data:', error);
-                    reject(error);
-                });
-            });
-        }
-
-        // CRITICAL: Register the function so Office.js can find it
-        Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
-    </script>
-</body>
-</html> -->
-
-
-
