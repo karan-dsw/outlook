@@ -51,34 +51,13 @@
                         "success",
                         {
                             type: "informationalMessage",
-                            message: "Flow triggered! Opening form...",
+                            message: "Email analyzed and flow triggered successfully! ✓",
                             icon: "Icon.80x80",
                             persistent: false
                         }
                     );
                     
-                    console.log('Flow triggered successfully, opening taskpane...');
-                    
-                    // Open the taskpane with the form after successful flow trigger
-                    Office.context.ui.displayDialogAsync(
-                        'https://karan-dsw.github.io/outlook/taskpane.html',
-                        { height: 60, width: 40 },
-                        function(result) {
-                            if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                console.log('Taskpane opened successfully');
-                                const dialog = result.value;
-                                
-                                // Listen for messages from the dialog
-                                dialog.addEventHandler(Office.EventType.DialogMessageReceived, function(arg) {
-                                    console.log('Message from dialog:', arg.message);
-                                    dialog.close();
-                                });
-                            } else {
-                                console.error('Failed to open taskpane:', result.error);
-                            }
-                        }
-                    );
-                    
+                    console.log('Flow triggered successfully');
                 } else {
                     const errorText = await response.text();
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
