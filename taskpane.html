@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Power Automate Trigger</title>
+    <title>Underwriting Form</title>
     
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     
@@ -17,10 +17,10 @@
         }
         
         .container {
-            max-width: 400px;
+            max-width: 500px;
             margin: 0 auto;
             background: white;
-            padding: 20px;
+            padding: 25px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -28,13 +28,53 @@
         h2 {
             color: #333;
             margin-top: 0;
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #0078d4;
+            box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
         }
         
         .button-container {
-            margin: 20px 0;
+            margin-top: 25px;
+            display: flex;
+            gap: 10px;
         }
         
         button {
+            flex: 1;
             background-color: #0078d4;
             color: white;
             border: none;
@@ -42,7 +82,6 @@
             font-size: 16px;
             border-radius: 4px;
             cursor: pointer;
-            width: 100%;
             transition: background-color 0.3s;
         }
         
@@ -55,10 +94,17 @@
             cursor: not-allowed;
         }
         
+        button.secondary {
+            background-color: #6c757d;
+        }
+        
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
         
         .status {
             margin-top: 15px;
-            padding: 10px;
+            padding: 12px;
             border-radius: 4px;
             display: none;
         }
@@ -82,38 +128,90 @@
         }
         
         .email-info {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f0f0f0;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #0078d4;
             border-radius: 4px;
-            font-size: 14px;
         }
         
-        .email-info label {
-            font-weight: bold;
-            color: #666;
+        .email-info h3 {
+            margin: 0 0 10px 0;
+            color: #0078d4;
+            font-size: 16px;
         }
         
         .email-info p {
             margin: 5px 0;
-            word-break: break-all;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .email-info .label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .required {
+            color: #d13438;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Power Automate Flow Trigger</h2>
+        <h2>Underwriting Form</h2>
         
-        <div class="email-info" id="emailInfo" style="display: none;">
-            <label>Current Email:</label>
-            <p id="emailSubject"></p>
+        <div class="email-info" id="emailInfo">
+            <h3>Email Information</h3>
+            <p><span class="label">Subject:</span> <span id="emailSubject">Loading...</span></p>
+            <p><span class="label">From:</span> <span id="emailFrom">Loading...</span></p>
         </div>
         
-        <div class="button-container">
-            <button id="triggerButton" onclick="triggerFlow()">
-                Auto Process
-            </button>
-        </div>
+        <form id="underwritingForm">
+            <div class="form-group">
+                <label for="policyNumber">Policy Number <span class="required">*</span></label>
+                <input type="text" id="policyNumber" name="policyNumber" required placeholder="Enter policy number">
+            </div>
+            
+            <div class="form-group">
+                <label for="claimType">Claim Type <span class="required">*</span></label>
+                <select id="claimType" name="claimType" required>
+                    <option value="">Select claim type</option>
+                    <option value="property">Property</option>
+                    <option value="liability">Liability</option>
+                    <option value="auto">Auto</option>
+                    <option value="health">Health</option>
+                    <option value="life">Life</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="claimAmount">Estimated Claim Amount</label>
+                <input type="number" id="claimAmount" name="claimAmount" placeholder="Enter amount" min="0" step="0.01">
+            </div>
+            
+            <div class="form-group">
+                <label for="priority">Priority <span class="required">*</span></label>
+                <select id="priority" name="priority" required>
+                    <option value="">Select priority</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="notes">Additional Notes</label>
+                <textarea id="notes" name="notes" placeholder="Enter any additional information..."></textarea>
+            </div>
+            
+            <div class="button-container">
+                <button type="button" class="secondary" onclick="closeForm()">Cancel</button>
+                <button type="submit" id="submitButton">Submit</button>
+            </div>
+        </form>
         
         <div class="status" id="statusMessage"></div>
     </div>
