@@ -161,21 +161,26 @@
                 // Build URL with query parameters for insurance form
                 const formUrl = buildInsuranceFormUrl(extractedData);
                 
-                // Open the insurance form in a dialog
+                // Open the insurance form in a new window/tab
+                console.log("Opening form in new window...");
                 try {
-                    Office.context.ui.displayDialogAsync(
-                        formUrl,
-                        { height: 80, width: 60, displayInIframe: false },
-                        (result) => {
-                            if (result.status === Office.AsyncResultStatus.Failed) {
-                                console.error("Dialog failed:", result.error.message);
-                                window.open(formUrl, '_blank');
+                    const newWindow = window.open(formUrl, '_blank');
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                        console.warn("Popup blocked, trying dialog...");
+                        Office.context.ui.displayDialogAsync(
+                            formUrl,
+                            { height: 80, width: 60, displayInIframe: false },
+                            (result) => {
+                                if (result.status === Office.AsyncResultStatus.Failed) {
+                                    console.error("Dialog also failed:", result.error.message);
+                                }
                             }
-                        }
-                    );
+                        );
+                    } else {
+                        console.log("Form opened successfully in new window");
+                    }
                 } catch (e) {
-                    console.error("Error opening dialog:", e);
-                    window.open(formUrl, '_blank');
+                    console.error("Error opening form:", e);
                 }
             } else {
                 console.warn("Timeout: Form data extraction did not complete in time");
@@ -220,8 +225,8 @@
         if (data.underwriter_email) params.append('underwriterEmail', data.underwriter_email);
         if (data.underwriter_name) params.append('underwriterName', data.underwriter_name);
         if (data.policy_number) params.append('policyNumber', data.policy_number);
-        if (data.agency_name) params.append('agencyName', data.agency_name);
-        if (data.agency_id) params.append('agencyId', data.agency_id);
+        if (data.broker_agency_name) params.append('agencyName', data.broker_agency_name);
+        if (data.broker_agency_id || data.agency_id) params.append('agencyId', data.broker_agency_id || data.agency_id);
         if (extractedData.detected_at) params.append('timestamp', extractedData.detected_at);
         
         const fullUrl = `${baseUrl}?${params.toString()}`;
