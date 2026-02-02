@@ -62,40 +62,76 @@
                 }
             );
 
-            // Wait 30 seconds
-            await new Promise(resolve => setTimeout(resolve, 20000));
+            // Poll the output-pdf API until we get a 200 response
+            let pdfReady = false;
+            let pdfPollingAttempts = 0;
+            const maxPdfPollingAttempts = 60; // Max 5 minutes
+            
+            while (pdfPollingAttempts < maxPdfPollingAttempts && !pdfReady) {
+                try {
+                    const pdfResponse = await fetch("https://c2c3f72d9adc.ngrok-free.app/api/output-pdf", {
+                        headers: {
+                            'ngrok-skip-browser-warning': 'true',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    if (pdfResponse.status === 200) {
+                        console.log("PDF is ready!");
+                        pdfReady = true;
+                        break;
+                    }
+                } catch (pollError) {
+                    console.warn("PDF polling attempt failed:", pollError.message);
+                }
+                
+                // Wait 5 seconds before next attempt
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                pdfPollingAttempts++;
+            }
 
             // Remove processing message
             Office.context.mailbox.item.notificationMessages.removeAsync("processing");
 
-            // Show success message
-            Office.context.mailbox.item.notificationMessages.addAsync(
-                "success",
-                {
-                    type: "informationalMessage",
-                    message: "Email is already processed",
-                    icon: "Icon.80x80",
-                    persistent: true
-                }
-            );
-
-            // Automatically open the report in a new tab using Office dialog
-            try {
-                Office.context.ui.displayDialogAsync(
-                    reportUrl,
-                    { height: 80, width: 80, displayInIframe: false },
-                    (result) => {
-                        if (result.status === Office.AsyncResultStatus.Failed) {
-                            console.error("Dialog failed:", result.error.message);
-                            // Fallback to window.open
-                            window.open(reportUrl, '_blank');
-                        }
+            if (pdfReady) {
+                // Show success message
+                Office.context.mailbox.item.notificationMessages.addAsync(
+                    "success",
+                    {
+                        type: "informationalMessage",
+                        message: "Report is ready! Opening now...",
+                        icon: "Icon.80x80",
+                        persistent: true
                     }
                 );
-            } catch (e) {
-                console.error("Error opening dialog:", e);
-                // Fallback to window.open
-                window.open(reportUrl, '_blank');
+
+                // Automatically open the report
+                try {
+                    window.open(reportUrl, '_blank');
+                    console.log("Report opened successfully");
+                } catch (e) {
+                    console.error("Error opening report:", e);
+                    // Fallback to dialog
+                    Office.context.ui.displayDialogAsync(
+                        reportUrl,
+                        { height: 80, width: 80, displayInIframe: false },
+                        (result) => {
+                            if (result.status === Office.AsyncResultStatus.Failed) {
+                                console.error("Dialog failed:", result.error.message);
+                            }
+                        }
+                    );
+                }
+            } else {
+                Office.context.mailbox.item.notificationMessages.addAsync(
+                    "timeout",
+                    {
+                        type: "informationalMessage",
+                        message: "Report generation timed out",
+                        icon: "Icon.80x80",
+                        persistent: false
+                    }
+                );
             }
 
             // ===== ADDITIONAL: Poll the pending API and open insurance form =====
