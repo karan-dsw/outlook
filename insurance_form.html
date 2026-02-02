@@ -468,8 +468,8 @@
                 underwriter_email: document.getElementById('underwriterEmail').value,
                 underwriter_name: document.getElementById('underwriterName').value,
                 policy_number: document.getElementById('policyNumber').value,
-                agency_name: document.getElementById('agencyName').value,
-                agency_id: document.getElementById('agencyId').value,
+                broker_agency_name: document.getElementById('agencyName').value,
+                broker_agency_id: document.getElementById('agencyId').value,
                 timestamp: document.getElementById('timestamp').value
             };
             
@@ -481,8 +481,9 @@
                 submitButton.disabled = true;
                 submitButton.textContent = 'Submitting...';
                 
-                // Send POST request to process API
-                const response = await fetch('https://c2c3f72d9adc.ngrok-free.app/api/process', {
+                // Step 3: Confirm email fields
+                console.log('Step 3: Confirming email fields...');
+                const confirmResponse = await fetch('https://c2c3f72d9adc.ngrok-free.app/api/email-fields', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -490,19 +491,40 @@
                     },
                     body: JSON.stringify({
                         filename: filename,
-                        updated_data: formData
+                        email_fields: formData
                     })
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                if (!confirmResponse.ok) {
+                    throw new Error(`Email fields confirmation failed: ${confirmResponse.status}`);
                 }
                 
-                const result = await response.json();
-                console.log('Submission successful:', result);
+                console.log('Email fields confirmed successfully');
+                
+                // Step 4: Process the file
+                console.log('Step 4: Processing file...');
+                submitButton.textContent = 'Processing...';
+                
+                const processResponse = await fetch('https://c2c3f72d9adc.ngrok-free.app/api/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({
+                        filename: filename
+                    })
+                });
+                
+                if (!processResponse.ok) {
+                    throw new Error(`Processing failed: ${processResponse.status}`);
+                }
+                
+                const result = await processResponse.json();
+                console.log('Processing successful:', result);
                 
                 // Show success message
-                successMessage.textContent = '✓ Form submitted successfully!';
+                successMessage.textContent = '✓ Form submitted and processed successfully!';
                 successMessage.classList.add('show');
                 submitButton.textContent = 'Submitted';
                 
