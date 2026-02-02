@@ -16,6 +16,9 @@
     ===================================================== */
     async function triggerFlowFromRibbon(event) {
         try {
+            // Open the taskpane
+            Office.addin.showAsTaskpane();
+            
             Office.context.mailbox.item.notificationMessages.addAsync(
                 "progress",
                 {
