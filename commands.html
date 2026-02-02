@@ -7,81 +7,371 @@
 </head>
 <body>
     <script>
-        Office.onReady(() => {
-            console.log('Commands.html loaded and ready');
-        });
+    Office.onReady(() => {
+        console.log("Commands.html loaded");
+    });
 
-        // This function is called when the ribbon button is clicked
-        async function triggerFlowFromRibbon(event) {
-            console.log('Underwriting button clicked from ribbon');
+    /* =====================================================
+    RIBBON ACTION
+    ===================================================== */
+    async function triggerFlowFromRibbon(event) {
+        try {
+            Office.context.mailbox.item.notificationMessages.addAsync(
+                "progress",
+                {
+                    type: "progressIndicator",
+                    message: "Analyzing email and sending to workflow..."
+                }
+            );
+
+            const emailData = await getEmailData();
+
+            const flowUrl =
+                "https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/89c12382226642a4907cd110e9e7ab87/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Nbz7sUIbNoHlSBt_KVnF3CFKCCf9lPYn-LbIxZsWouA";
+            const response = await fetch(flowUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(emailData)
+            });
+
+            Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`HTTP ${response.status}: ${err}`);
+            }
+
+            // Get the attachment filename to construct the report URL
+            const attachmentName = emailData.attachments.length > 0 
+                ? emailData.attachments[0].name 
+                : "report.html";
             
+            // Remove file extension and add .html
+            const baseFilename = attachmentName.replace(/\.[^/.]+$/, "");
+            const reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_report.pdf`;
+
+            // Show processing message
+            Office.context.mailbox.item.notificationMessages.addAsync(
+                "processing",
+                {
+                    type: "informationalMessage",
+                    message: "Processing... Report will be opened when ready",
+                    icon: "Icon.80x80",
+                    persistent: true
+                }
+            );
+
+            // Wait 30 seconds
+            await new Promise(resolve => setTimeout(resolve, 20000));
+
+            // Remove processing message
+            Office.context.mailbox.item.notificationMessages.removeAsync("processing");
+
+            // Show success message
+            Office.context.mailbox.item.notificationMessages.addAsync(
+                "success",
+                {
+                    type: "informationalMessage",
+                    message: "Email is already processed",
+                    icon: "Icon.80x80",
+                    persistent: true
+                }
+            );
+
+            // Automatically open the report in a new tab using Office dialog
             try {
-                // Show notification that processing has started
-                Office.context.mailbox.item.notificationMessages.addAsync(
-                    "progress",
-                    {
-                        type: "progressIndicator",
-                        message: "Analyzing email and triggering flow..."
+                Office.context.ui.displayDialogAsync(
+                    reportUrl,
+                    { height: 80, width: 80, displayInIframe: false },
+                    (result) => {
+                        if (result.status === Office.AsyncResultStatus.Failed) {
+                            console.error("Dialog failed:", result.error.message);
+                            // Fallback to window.open
+                            window.open(reportUrl, '_blank');
+                        }
                     }
                 );
-                
-                // Get email data including body for analysis
-                const emailData = await getEmailData();
-                
-                console.log('Email data collected:', emailData);
-                
-                // Your Power Automate flow URL
-                const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/89c12382226642a4907cd110e9e7ab87/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Nbz7sUIbNoHlSBt_KVnF3CFKCCf9lPYn-LbIxZsWouA';
-                
-                // Call Power Automate
-                const response = await fetch(flowUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(emailData)
+            } catch (e) {
+                console.error("Error opening dialog:", e);
+                // Fallback to window.open
+                window.open(reportUrl, '_blank');
+            }
+
+        } catch (error) {
+            console.error(error);
+
+            Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+
+            Office.context.mailbox.item.notificationMessages.addAsync(
+                "error",
+                {
+                    type: "errorMessage",
+                    message: "Processing failed: " + error.message
+                }
+            );
+        } finally {
+            event.completed();
+        }
+    }
+
+    /* =====================================================
+    EMAIL DATA COLLECTION
+    ===================================================== */
+    async function getEmailData() {
+        const item = Office.context.mailbox.item;
+
+        if (!item) throw new Error("No email context");
+
+        const subject = await getSubject(item);
+        const body = await getBody(item);
+        const attachments = await getAttachmentContents(item);
+
+        // Get email identifiers
+        const itemId = item.itemId || "";
+        const conversationId = item.conversationId || "";
+        
+        console.log("Item ID (EWS format):", itemId);
+        console.log("Conversation ID:", conversationId);
+        console.log("Internet Message ID:", item.internetMessageId);
+
+        return {
+            triggeredAt: new Date().toISOString(),
+
+            userEmail: Office.context.mailbox.userProfile.emailAddress || "",
+
+            subject: subject,
+            body: body,
+
+            from: getSender(item),
+
+            receivedDateTime:
+                item.dateTimeCreated ||
+                item.dateTimeModified ||
+                new Date().toISOString(),
+
+            internetMessageId: item.internetMessageId || "",
+
+            itemId: itemId,
+            conversationId: conversationId,
+
+            hasAttachments: attachments.length > 0,
+            attachmentCount: attachments.length,
+            attachments: attachments
+        };
+    }
+
+    /* =====================================================
+    HELPERS
+    ===================================================== */
+    function getSubject(item) {
+        return new Promise(resolve => {
+            if (typeof item.subject === "string") {
+                resolve(item.subject);
+            } else {
+                item.subject.getAsync(result =>
+                    resolve(result.status === Office.AsyncResultStatus.Succeeded
+                        ? result.value
+                        : "Subject unavailable")
+                );
+            }
+        });
+    }
+
+    function getBody(item) {
+        return new Promise(resolve => {
+            item.body.getAsync(Office.CoercionType.Text, result =>
+                resolve(result.status === Office.AsyncResultStatus.Succeeded
+                    ? result.value
+                    : "Body unavailable")
+            );
+        });
+    }
+
+    function getSender(item) {
+        if (!item.from) return "Unknown";
+
+        if (typeof item.from === "string") return item.from;
+        if (item.from.emailAddress) return item.from.emailAddress;
+        if (item.from.displayName) return item.from.displayName;
+
+        return "Unknown";
+    }
+
+    /* =====================================================
+    ATTACHMENT CONTENT (BASE64)
+    ===================================================== */
+    async function getAttachmentContents(item) {
+        if (!item.attachments || item.attachments.length === 0) {
+            return [];
+        }
+
+        const results = [];
+
+        for (const att of item.attachments) {
+            console.log(`Processing attachment: ${att.name}, ID: ${att.id}`);
+            
+            try {
+                await new Promise(resolve => {
+                    item.getAttachmentContentAsync(att.id, res => {
+                        if (res.status === Office.AsyncResultStatus.Succeeded) {
+                            console.log(`Successfully retrieved ${att.name}, content length: ${res.value.content.length}`);
+                            results.push({
+                                id: att.id,
+                                name: att.name,
+                                contentType: att.contentType,
+                                size: att.size,
+                                content: res.value.content,
+                                format: res.value.format
+                            });
+                        } else {
+                            console.error(`Failed to retrieve ${att.name}:`, res.error);
+                            results.push({
+                                id: att.id,
+                                name: att.name,
+                                error: res.error ? res.error.message : 'Unknown error'
+                            });
+                        }
+                        resolve();
+                    });
                 });
+            } catch (error) {
+                console.error(`Exception retrieving ${att.name}:`, error);
+                results.push({
+                    id: att.id,
+                    name: att.name,
+                    error: error.message
+                });
+            }
+        }
+
+        console.log(`Total attachments processed: ${results.length}`);
+        return results;
+    }
+
+    /* =====================================================
+    GET FRESH CALLBACK TOKEN
+    ===================================================== */
+    async function getCallbackToken() {
+        return new Promise((resolve) => {
+            Office.context.mailbox.getCallbackTokenAsync({ isRest: true }, (result) => {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                    resolve(result.value);
+                } else {
+                    console.error('Error getting callback token:', result.error);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    /* =====================================================
+    BLOB TO BASE64 CONVERTER
+    ===================================================== */
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64data = reader.result.split(',')[1];
+                resolve(base64data);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    /* =====================================================
+    REGISTER COMMAND
+    ===================================================== */
+    Office.actions.associate("triggerFlowFromRibbon", triggerFlowFromRibbon);
+    </script>
+    </body>
+    </html>
+
+
+    <!-- <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+        <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    </head>
+    <body>
+        <script>
+            Office.onReady(() => {
+                console.log('Commands.html loaded and ready');
+            });
+
+            // This function is called when the ribbon button is clicked
+            async function triggerFlowFromRibbon(event) {
+                console.log('Trigger Flow button clicked from ribbon');
                 
-                // Remove progress indicator
-                Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-                
-                if (response.ok) {
-                    // Show success notification
+                try {
+                    // Show notification that processing has started
                     Office.context.mailbox.item.notificationMessages.addAsync(
-                        "success",
+                        "progress",
                         {
-                            type: "informationalMessage",
-                            message: "Email analyzed and flow triggered successfully! ✓",
-                            icon: "Icon.80x80",
-                            persistent: false
+                            type: "progressIndicator",
+                            message: "Analyzing email and triggering flow..."
                         }
                     );
                     
-                    console.log('Flow triggered successfully');
-                } else {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-            } catch (error) {
-                console.error('Error triggering flow:', error);
-                
-                // Remove progress indicator if still showing
-                Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-                
-                // Show error notification
-                Office.context.mailbox.item.notificationMessages.addAsync(
-                    "error",
-                    {
-                        type: "errorMessage",
-                        message: "Failed to Underwriting: " + error.message
+                    // Get email data including body for analysis
+                    const emailData = await getEmailData();
+                    
+                    console.log('Email data collected:', emailData);
+                    
+                    // Your Power Automate flow URL
+                    const flowUrl = 'https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d24491dc744c4daaa0ed8c41d2afd928/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=elpbeJ6uwo9d6new1ea8hRBciI19lRaX-Xp0wLaYLec';
+                    
+                    // Call Power Automate
+                    const response = await fetch(flowUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(emailData)
+                    });
+                    
+                    // Remove progress indicator
+                    Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+                    
+                    if (response.ok) {
+                        // Show success notification
+                        Office.context.mailbox.item.notificationMessages.addAsync(
+                            "success",
+                            {
+                                type: "informationalMessage",
+                                message: "Email analyzed and flow triggered successfully! ✓",
+                                
+                                persistent: false
+                            }
+                        );
+                        
+                        console.log('Flow triggered successfully');
+                    } else {
+                        const errorText = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
                     }
-                );
-            } finally {
-                // Signal that the function has completed
-                event.completed();
+                    
+                } catch (error) {
+                    console.error('Error triggering flow:', error);
+                    
+                    // Remove progress indicator if still showing
+                    Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+                    
+                    // Show error notification
+                    Office.context.mailbox.item.notificationMessages.addAsync(
+                        "error",
+                        {
+                            type: "errorMessage",
+                            message: "Failed to trigger flow: " + error.message
+                        }
+                    );
+                } finally {
+                    // Signal that the function has completed
+                    event.completed();
+                }
             }
-        }
 
         async function getEmailData() {
             return new Promise((resolve, reject) => {
