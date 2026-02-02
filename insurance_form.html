@@ -547,29 +547,26 @@
                             const pdfData = await pdfResponse.json();
                             console.log('PDF is ready!', pdfData);
                             
-                            // Get the report URL from the API response or construct it
-                            let reportUrl;
-                            if (pdfData.html_report_path || pdfData.report_url) {
-                                reportUrl = pdfData.html_report_path || pdfData.report_url;
-                                console.log('Using API provided URL:', reportUrl);
-                            } else {
-                                // Fallback to constructing the URL
-                                const baseFilename = filename.replace(/\.[^/.]+$/, "");
-                                reportUrl = `https://datasciencewiizardsai-my.sharepoint.com/personal/karan_panchal_datasciencewizards_ai/Documents/Output_attachments/${baseFilename}_report.html`;
-                                console.log('Using constructed URL:', reportUrl);
-                            }
+                            // Get the report URL from the API response
+                            const reportUrl = pdfData.pdf_url;
                             
-                            // Try to open immediately
-                            console.log('Attempting to open report in new tab...');
-                            const newWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
-                            
-                            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                                console.error('Popup was blocked!');
-                                // Show user a link they can click
-                                successMessage.innerHTML = `✓ Form submitted! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline;">Click here to open report</a>`;
+                            if (reportUrl) {
+                                console.log('Opening report:', reportUrl);
+                                
+                                // Try to open immediately
+                                const newWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
+                                
+                                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                                    console.error('Popup was blocked!');
+                                    // Show user a link they can click
+                                    successMessage.innerHTML = `✓ Form submitted! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline;">Click here to open report</a>`;
+                                } else {
+                                    console.log('Report opened successfully in new tab');
+                                    successMessage.textContent = '✓ Form submitted and report opened successfully!';
+                                }
                             } else {
-                                console.log('Report opened successfully in new tab');
-                                successMessage.textContent = '✓ Form submitted and report opened successfully!';
+                                console.error('No pdf_url in response:', pdfData);
+                                successMessage.textContent = '✓ Form submitted! Report URL not available.';
                             }
                             
                             pdfReady = true;
