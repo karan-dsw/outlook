@@ -98,6 +98,84 @@
                 window.open(reportUrl, '_blank');
             }
 
+            // ===== ADDITIONAL: Poll the pending API and open insurance form =====
+            // Show additional processing message for form data
+            Office.context.mailbox.item.notificationMessages.addAsync(
+                "formProcessing",
+                {
+                    type: "informationalMessage",
+                    message: "Extracting form data...",
+                    icon: "Icon.80x80",
+                    persistent: true
+                }
+            );
+
+            // Poll the pending API until we get a 200 response
+            let extractedData = null;
+            let pollingAttempts = 0;
+            const maxPollingAttempts = 60; // Max 5 minutes (60 attempts * 5 seconds)
+            
+            while (pollingAttempts < maxPollingAttempts) {
+                try {
+                    const pendingResponse = await fetch("https://c2c3f72d9adc.ngrok-free.app/api/pending");
+                    
+                    if (pendingResponse.ok) {
+                        const data = await pendingResponse.json();
+                        console.log("Pending API response:", data);
+                        
+                        if (data.success && data.count > 0 && data.files && data.files.length > 0) {
+                            extractedData = data.files[0];
+                            console.log("Extracted data received:", extractedData);
+                            break;
+                        }
+                    }
+                } catch (pollError) {
+                    console.error("Polling error:", pollError);
+                }
+                
+                // Wait 5 seconds before next attempt
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                pollingAttempts++;
+            }
+
+            // Remove form processing message
+            Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
+
+            if (extractedData) {
+                // Show success message for form data
+                Office.context.mailbox.item.notificationMessages.addAsync(
+                    "formSuccess",
+                    {
+                        type: "informationalMessage",
+                        message: "Form data extracted! Opening insurance form...",
+                        icon: "Icon.80x80",
+                        persistent: false
+                    }
+                );
+
+                // Build URL with query parameters for insurance form
+                const formUrl = buildInsuranceFormUrl(extractedData);
+                
+                // Open the insurance form in a dialog
+                try {
+                    Office.context.ui.displayDialogAsync(
+                        formUrl,
+                        { height: 80, width: 60, displayInIframe: false },
+                        (result) => {
+                            if (result.status === Office.AsyncResultStatus.Failed) {
+                                console.error("Dialog failed:", result.error.message);
+                                window.open(formUrl, '_blank');
+                            }
+                        }
+                    );
+                } catch (e) {
+                    console.error("Error opening dialog:", e);
+                    window.open(formUrl, '_blank');
+                }
+            } else {
+                console.warn("Timeout: Form data extraction did not complete in time");
+            }
+
         } catch (error) {
             console.error(error);
 
@@ -113,6 +191,33 @@
         } finally {
             event.completed();
         }
+    }
+
+    /* =====================================================
+    BUILD INSURANCE FORM URL WITH EXTRACTED DATA
+    ===================================================== */
+    function buildInsuranceFormUrl(extractedData) {
+        const baseUrl = window.location.origin + "/outlook/insurance_form.html";
+        const params = new URLSearchParams();
+        
+        // Store filename for later submission
+        if (extractedData.filename) {
+            params.append('filename', extractedData.filename);
+        }
+        
+        // Map extracted data fields to form fields
+        const data = extractedData.extracted_data || {};
+        
+        if (data.broker_email) params.append('brokerEmail', data.broker_email);
+        if (data.broker_name) params.append('brokerName', data.broker_name);
+        if (data.underwriter_email) params.append('underwriterEmail', data.underwriter_email);
+        if (data.underwriter_name) params.append('underwriterName', data.underwriter_name);
+        if (data.policy_number) params.append('policyNumber', data.policy_number);
+        if (data.agency_name) params.append('agencyName', data.agency_name);
+        if (data.agency_id) params.append('agencyId', data.agency_id);
+        if (extractedData.detected_at) params.append('timestamp', extractedData.detected_at);
+        
+        return `${baseUrl}?${params.toString()}`;
     }
 
     /* =====================================================
