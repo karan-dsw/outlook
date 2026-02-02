@@ -210,8 +210,10 @@
             params.append('filename', extractedData.filename);
         }
         
-        // Map extracted data fields to form fields
-        const data = extractedData.extracted_data || {};
+        // Map extracted data fields to form fields - use email_fields instead of extracted_data
+        const data = extractedData.email_fields || extractedData.extracted_data || {};
+        
+        console.log("Building form URL with data:", data);
         
         if (data.broker_email) params.append('brokerEmail', data.broker_email);
         if (data.broker_name) params.append('brokerName', data.broker_name);
@@ -222,7 +224,9 @@
         if (data.agency_id) params.append('agencyId', data.agency_id);
         if (extractedData.detected_at) params.append('timestamp', extractedData.detected_at);
         
-        return `${baseUrl}?${params.toString()}`;
+        const fullUrl = `${baseUrl}?${params.toString()}`;
+        console.log("Form URL generated:", fullUrl);
+        return fullUrl;
     }
 
     /* =====================================================
