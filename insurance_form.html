@@ -485,7 +485,8 @@
                 const response = await fetch('https://c2c3f72d9adc.ngrok-free.app/api/process', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
                     },
                     body: JSON.stringify({
                         filename: filename,
@@ -540,3 +541,6 @@
     </script>
 </body>
 </html>
+
+
+
