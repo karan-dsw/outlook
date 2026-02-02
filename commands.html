@@ -42,6 +42,95 @@
                 throw new Error(`HTTP ${response.status}: ${err}`);
             }
 
+            // ===== STEP 1: Poll the pending API and open insurance form =====
+            // Show processing message for form data
+            Office.context.mailbox.item.notificationMessages.addAsync(
+                "formProcessing",
+                {
+                    type: "informationalMessage",
+                    message: "Extracting form data...",
+                    icon: "Icon.80x80",
+                    persistent: true
+                }
+            );
+
+            // Poll the pending API until we get a 200 response
+            let extractedData = null;
+            let pollingAttempts = 0;
+            const maxPollingAttempts = 60; // Max 5 minutes (60 attempts * 5 seconds)
+            
+            while (pollingAttempts < maxPollingAttempts) {
+                try {
+                    const pendingResponse = await fetch("https://c2c3f72d9adc.ngrok-free.app/api/pending", {
+                        headers: {
+                            'ngrok-skip-browser-warning': 'true',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    if (pendingResponse.ok) {
+                        const data = await pendingResponse.json();
+                        console.log("Pending API response:", data);
+                        
+                        if (data.success && data.count > 0 && data.files && data.files.length > 0) {
+                            extractedData = data.files[0];
+                            console.log("Extracted data received:", extractedData);
+                            break;
+                        }
+                    }
+                } catch (pollError) {
+                    console.warn("Polling attempt failed:", pollError.message);
+                }
+                
+                // Wait 5 seconds before next attempt
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                pollingAttempts++;
+            }
+
+            // Remove form processing message
+            Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
+
+            if (extractedData) {
+                // Show success message for form data
+                Office.context.mailbox.item.notificationMessages.addAsync(
+                    "formSuccess",
+                    {
+                        type: "informationalMessage",
+                        message: "Form data extracted! Opening insurance form...",
+                        icon: "Icon.80x80",
+                        persistent: false
+                    }
+                );
+
+                // Build URL with query parameters for insurance form
+                const formUrl = buildInsuranceFormUrl(extractedData);
+                
+                // Open the insurance form in a new window/tab
+                console.log("Opening form in new window...");
+                try {
+                    const newWindow = window.open(formUrl, '_blank');
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                        console.warn("Popup blocked, trying dialog...");
+                        Office.context.ui.displayDialogAsync(
+                            formUrl,
+                            { height: 80, width: 60, displayInIframe: false },
+                            (result) => {
+                                if (result.status === Office.AsyncResultStatus.Failed) {
+                                    console.error("Dialog also failed:", result.error.message);
+                                }
+                            }
+                        );
+                    } else {
+                        console.log("Form opened successfully in new window");
+                    }
+                } catch (e) {
+                    console.error("Error opening form:", e);
+                }
+            } else {
+                console.warn("Timeout: Form data extraction did not complete in time");
+            }
+
+            // ===== STEP 2: Now poll output-pdf API and open report =====
             // Get the attachment filename to construct the report URL
             const attachmentName = emailData.attachments.length > 0 
                 ? emailData.attachments[0].name 
@@ -132,94 +221,6 @@
                         persistent: false
                     }
                 );
-            }
-
-            // ===== ADDITIONAL: Poll the pending API and open insurance form =====
-            // Show additional processing message for form data
-            Office.context.mailbox.item.notificationMessages.addAsync(
-                "formProcessing",
-                {
-                    type: "informationalMessage",
-                    message: "Extracting form data...",
-                    icon: "Icon.80x80",
-                    persistent: true
-                }
-            );
-
-            // Poll the pending API until we get a 200 response
-            let extractedData = null;
-            let pollingAttempts = 0;
-            const maxPollingAttempts = 60; // Max 5 minutes (60 attempts * 5 seconds)
-            
-            while (pollingAttempts < maxPollingAttempts) {
-                try {
-                    const pendingResponse = await fetch("https://c2c3f72d9adc.ngrok-free.app/api/pending", {
-                        headers: {
-                            'ngrok-skip-browser-warning': 'true',
-                            'Accept': 'application/json'
-                        }
-                    });
-                    
-                    if (pendingResponse.ok) {
-                        const data = await pendingResponse.json();
-                        console.log("Pending API response:", data);
-                        
-                        if (data.success && data.count > 0 && data.files && data.files.length > 0) {
-                            extractedData = data.files[0];
-                            console.log("Extracted data received:", extractedData);
-                            break;
-                        }
-                    }
-                } catch (pollError) {
-                    console.warn("Polling attempt failed:", pollError.message);
-                }
-                
-                // Wait 5 seconds before next attempt
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                pollingAttempts++;
-            }
-
-            // Remove form processing message
-            Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
-
-            if (extractedData) {
-                // Show success message for form data
-                Office.context.mailbox.item.notificationMessages.addAsync(
-                    "formSuccess",
-                    {
-                        type: "informationalMessage",
-                        message: "Form data extracted! Opening insurance form...",
-                        icon: "Icon.80x80",
-                        persistent: false
-                    }
-                );
-
-                // Build URL with query parameters for insurance form
-                const formUrl = buildInsuranceFormUrl(extractedData);
-                
-                // Open the insurance form in a new window/tab
-                console.log("Opening form in new window...");
-                try {
-                    const newWindow = window.open(formUrl, '_blank');
-                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-                        console.warn("Popup blocked, trying dialog...");
-                        Office.context.ui.displayDialogAsync(
-                            formUrl,
-                            { height: 80, width: 60, displayInIframe: false },
-                            (result) => {
-                                if (result.status === Office.AsyncResultStatus.Failed) {
-                                    console.error("Dialog also failed:", result.error.message);
-                                }
-                            }
-                        );
-                    } else {
-                        console.log("Form opened successfully in new window");
-                    }
-                } catch (e) {
-                    console.error("Error opening form:", e);
-                }
-            } else {
-                console.warn("Timeout: Form data extraction did not complete in time");
             }
 
         } catch (error) {
