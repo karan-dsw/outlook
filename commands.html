@@ -105,26 +105,47 @@
                 // Build URL with query parameters for insurance form
                 const formUrl = buildInsuranceFormUrl(extractedData);
                 
-                // Open the insurance form in a new window/tab
-                console.log("Opening form in new window...");
+                // Open the insurance form in the taskpane
+                console.log("Opening form in taskpane...");
                 try {
-                    const newWindow = window.open(formUrl, '_blank');
-                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-                        console.warn("Popup blocked, trying dialog...");
-                        Office.context.ui.displayDialogAsync(
-                            formUrl,
-                            { height: 80, width: 60, displayInIframe: false },
-                            (result) => {
-                                if (result.status === Office.AsyncResultStatus.Failed) {
-                                    console.error("Dialog also failed:", result.error.message);
-                                }
+                    Office.context.mailbox.item.notificationMessages.addAsync(
+                        "taskpaneOpening",
+                        {
+                            type: "informationalMessage",
+                            message: "Opening form in taskpane...",
+                            icon: "Icon.80x80",
+                            persistent: false
+                        }
+                    );
+
+                    // Open taskpane with form URL
+                    Office.context.ui.displayDialogAsync(
+                        formUrl,
+                        { height: 90, width: 50, displayInIframe: true },
+                        (result) => {
+                            if (result.status === Office.AsyncResultStatus.Failed) {
+                                console.error("Failed to open form:", result.error.message);
+                                Office.context.mailbox.item.notificationMessages.addAsync(
+                                    "formError",
+                                    {
+                                        type: "errorMessage",
+                                        message: "Failed to open form: " + result.error.message
+                                    }
+                                );
+                            } else {
+                                console.log("Form opened successfully in dialog");
                             }
-                        );
-                    } else {
-                        console.log("Form opened successfully in new window");
-                    }
+                        }
+                    );
                 } catch (e) {
                     console.error("Error opening form:", e);
+                    Office.context.mailbox.item.notificationMessages.addAsync(
+                        "formError",
+                        {
+                            type: "errorMessage",
+                            message: "Error opening form: " + e.message
+                        }
+                    );
                 }
             } else {
                 console.warn("Timeout: Form data extraction did not complete in time");
