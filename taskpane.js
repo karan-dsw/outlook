@@ -345,13 +345,23 @@ async function handleFormSubmit(e) {
                     if (reportUrl) {
                         console.log('Opening report:', reportUrl);
                         
-                        const newWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
-                        
-                        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                            successMessage.innerHTML = `✓ Form submitted! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline;">Click here to open report</a>`;
-                        } else {
-                            successMessage.textContent = '✓ Form submitted and report opened successfully!';
-                        }
+                        // Use Office Dialog API to open the report
+                        Office.context.ui.displayDialogAsync(
+                            reportUrl,
+                            { height: 90, width: 70, displayInIframe: false },
+                            (result) => {
+                                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                    console.log('Report opened successfully');
+                                    successMessage.textContent = '✓ Form submitted and report opened successfully!';
+                                } else {
+                                    console.error('Failed to open report:', result.error.message);
+                                    // Provide clickable link as fallback
+                                    successMessage.innerHTML = `✓ Form submitted! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                                }
+                            }
+                        );
+                    } else {
+                        successMessage.textContent = '✓ Form submitted! Report URL not available.';
                     }
                     
                     pdfReady = true;
