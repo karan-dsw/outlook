@@ -17,6 +17,7 @@
   
   <AppDomains>
     <AppDomain>https://karan-dsw.github.io</AppDomain>
+    <AppDomain>https://datasciencewiizardsai-my.sharepoint.com</AppDomain>
   </AppDomains>
   
   <Hosts>
