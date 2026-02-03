@@ -32,7 +32,7 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://karan-dsw.github.io/outlook/taskpane.html"/>
+        <SourceLocation DefaultValue="https://karan-dsw.github.io/outlook/insurance_form.html"/>
         <RequestedHeight>250</RequestedHeight>
       </DesktopSettings>
     </Form>
@@ -97,7 +97,7 @@
       </bt:Images>
       <bt:Urls>
         <bt:Url id="Commands.Url" DefaultValue="https://karan-dsw.github.io/outlook/commands.html"/>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://karan-dsw.github.io/outlook/taskpane.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://karan-dsw.github.io/outlook/insurance_form.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="Flow Actions"/>
