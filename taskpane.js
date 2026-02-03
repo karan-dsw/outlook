@@ -18,6 +18,15 @@ async function triggerFlowAndLoadForm() {
     const loadingSubtext = document.querySelector('.loading-subtext');
     
     try {
+        // Show progress notification in email view
+        Office.context.mailbox.item.notificationMessages.addAsync(
+            "progress",
+            {
+                type: "progressIndicator",
+                message: "Analyzing email and sending to workflow..."
+            }
+        );
+        
         // Step 1: Get email data
         loadingText.textContent = 'Collecting email data...';
         const emailData = await getEmailData();
@@ -35,6 +44,8 @@ async function triggerFlowAndLoadForm() {
             body: JSON.stringify(emailData)
         });
         
+        Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+        
         if (!response.ok) {
             const err = await response.text();
             throw new Error(`HTTP ${response.status}: ${err}`);
@@ -43,6 +54,17 @@ async function triggerFlowAndLoadForm() {
         console.log('Flow triggered successfully');
         
         // Step 3: Poll for extracted form data
+        // Show notification for form data extraction
+        Office.context.mailbox.item.notificationMessages.addAsync(
+            "formProcessing",
+            {
+                type: "informationalMessage",
+                message: "Extracting form data from attachments...",
+                icon: "Icon.80x80",
+                persistent: true
+            }
+        );
+        
         loadingText.textContent = 'Extracting form data from attachments...';
         loadingSubtext.textContent = 'This may take a few moments';
         
@@ -83,8 +105,23 @@ async function triggerFlowAndLoadForm() {
         }
         
         if (!extractedData) {
+            Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
             throw new Error('Timeout: Form data extraction did not complete in time');
         }
+        
+        // Remove processing notification
+        Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
+        
+        // Show success notification
+        Office.context.mailbox.item.notificationMessages.addAsync(
+            "formSuccess",
+            {
+                type: "informationalMessage",
+                message: "Form data extracted! Opening form in taskpane...",
+                icon: "Icon.80x80",
+                persistent: false
+            }
+        );
         
         // Step 4: Populate form with extracted data
         loadingText.textContent = 'Loading form...';
@@ -98,6 +135,20 @@ async function triggerFlowAndLoadForm() {
         
     } catch (error) {
         console.error('Error:', error);
+        
+        // Remove any pending notifications
+        Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+        Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
+        
+        // Show error notification in email view
+        Office.context.mailbox.item.notificationMessages.addAsync(
+            "error",
+            {
+                type: "errorMessage",
+                message: "Processing failed: " + error.message
+            }
+        );
+        
         loadingText.textContent = 'Error occurred';
         loadingSubtext.innerHTML = `<div class="error-message">${error.message}</div>`;
     }
