@@ -368,14 +368,14 @@ async function handleFormSubmit(e) {
         const result = await processResponse.json();
         console.log('Processing successful:', result);
         
-        // Show notification in email view
+        // Show persistent notification in email view
         Office.context.mailbox.item.notificationMessages.addAsync(
             "processSuccess",
             {
                 type: "informationalMessage",
                 message: "Email processed successfully! ✓",
                 icon: "Icon.80x80",
-                persistent: false
+                persistent: true
             }
         );
         
@@ -407,35 +407,19 @@ async function handleFormSubmit(e) {
                     if (reportUrl) {
                         console.log('Opening report:', reportUrl);
                         
-                        // Try multiple methods to open the report
+                        // Open report in new window
                         try {
-                            // Method 1: Try opening in a new window first
                             const newWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
                             
                             if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
                                 console.log('Report opened successfully in new window');
                                 successMessage.textContent = '✓ Email processed successfully! Report opened.';
                             } else {
-                                // Method 2: Use Office Dialog API as fallback
-                                console.log('Window.open blocked, trying Office dialog...');
-                                Office.context.ui.displayDialogAsync(
-                                    reportUrl,
-                                    { height: 90, width: 70, displayInIframe: false },
-                                    (result) => {
-                                        if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                            console.log('Report opened successfully via dialog');
-                                            successMessage.textContent = '✓ Email processed successfully! Report opened.';
-                                        } else {
-                                            console.error('Failed to open report:', result.error.message);
-                                            // Method 3: Show clickable link as final fallback
-                                            successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
-                                        }
-                                    }
-                                );
+                                console.log('Window blocked, showing link');
+                                successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
                             }
                         } catch (openError) {
                             console.error('Error opening report:', openError);
-                            // Show clickable link as fallback
                             successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
                         }
                     } else {
