@@ -490,11 +490,11 @@ async function handleFormSubmit(e) {
         successMessage.classList.add('show');
         submitButton.textContent = 'Generating Report...';
         
-        // Step 5: Poll for PDF report
+        // Step 5: Poll for PDF report - start immediately with shorter interval
         console.log('Waiting for PDF report...');
         let pdfReady = false;
         let pdfPollingAttempts = 0;
-        const maxPdfPollingAttempts = 60;
+        const maxPdfPollingAttempts = 60; // 2 minutes max (60 attempts * 2 seconds)
         
         while (pdfPollingAttempts < maxPdfPollingAttempts && !pdfReady) {
             try {
@@ -540,7 +540,7 @@ async function handleFormSubmit(e) {
                 console.warn('PDF polling attempt failed:', pollError.message);
             }
             
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 2000));
             pdfPollingAttempts++;
         }
         
