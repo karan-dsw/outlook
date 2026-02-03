@@ -171,6 +171,8 @@ function populateForm(extractedData) {
     if (data.policy_number) document.getElementById('policyNumber').value = data.policy_number;
     if (data.broker_agency_name) document.getElementById('agencyName').value = data.broker_agency_name;
     if (data.broker_agency_id || data.agency_id) document.getElementById('agencyId').value = data.broker_agency_id || data.agency_id;
+    if (data.email_summary) document.getElementById('emailSummary').value = data.email_summary;
+    if (data.comments) document.getElementById('comments').value = data.comments;
     
     // Set timestamp
     const timestampField = document.getElementById('timestamp');
@@ -316,6 +318,8 @@ async function handleFormSubmit(e) {
         policy_number: document.getElementById('policyNumber').value,
         broker_agency_name: document.getElementById('agencyName').value,
         broker_agency_id: document.getElementById('agencyId').value,
+        email_summary: document.getElementById('emailSummary').value,
+        comments: document.getElementById('comments').value,
         timestamp: document.getElementById('timestamp').value
     };
     
