@@ -483,7 +483,7 @@
                 
                 // Step 3: Confirm email fields
                 console.log('Step 3: Confirming email fields...');
-                const confirmResponse = await fetch('https://c2c3f72d9adc.ngrok-free.app/api/email-fields', {
+                const confirmResponse = await fetch('https://e7bcca93d9b7.ngrok-free.app/api/email-fields', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -505,7 +505,7 @@
                 console.log('Step 4: Processing file...');
                 submitButton.textContent = 'Processing...';
                 
-                const processResponse = await fetch('https://c2c3f72d9adc.ngrok-free.app/api/process', {
+                const processResponse = await fetch('https://e7bcca93d9b7.ngrok-free.app/api/process', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -536,7 +536,7 @@
                 
                 while (pdfPollingAttempts < maxPdfPollingAttempts && !pdfReady) {
                     try {
-                        const pdfResponse = await fetch('https://c2c3f72d9adc.ngrok-free.app/api/output-pdf', {
+                        const pdfResponse = await fetch('https://e7bcca93d9b7.ngrok-free.app/api/output-pdf', {
                             headers: {
                                 'ngrok-skip-browser-warning': 'true',
                                 'Accept': 'application/json'
