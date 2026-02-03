@@ -368,6 +368,17 @@ async function handleFormSubmit(e) {
         const result = await processResponse.json();
         console.log('Processing successful:', result);
         
+        // Show notification in email view
+        Office.context.mailbox.item.notificationMessages.addAsync(
+            "processSuccess",
+            {
+                type: "informationalMessage",
+                message: "Email processed successfully! ✓",
+                icon: "Icon.80x80",
+                persistent: false
+            }
+        );
+        
         successMessage.textContent = '✓ Form submitted successfully! Generating report...';
         successMessage.classList.add('show');
         submitButton.textContent = 'Generating Report...';
@@ -396,23 +407,39 @@ async function handleFormSubmit(e) {
                     if (reportUrl) {
                         console.log('Opening report:', reportUrl);
                         
-                        // Use Office Dialog API to open the report
-                        Office.context.ui.displayDialogAsync(
-                            reportUrl,
-                            { height: 90, width: 70, displayInIframe: false },
-                            (result) => {
-                                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                    console.log('Report opened successfully');
-                                    successMessage.textContent = '✓ Form submitted and report opened successfully!';
-                                } else {
-                                    console.error('Failed to open report:', result.error.message);
-                                    // Provide clickable link as fallback
-                                    successMessage.innerHTML = `✓ Form submitted! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
-                                }
+                        // Try multiple methods to open the report
+                        try {
+                            // Method 1: Try opening in a new window first
+                            const newWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
+                            
+                            if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
+                                console.log('Report opened successfully in new window');
+                                successMessage.textContent = '✓ Email processed successfully! Report opened.';
+                            } else {
+                                // Method 2: Use Office Dialog API as fallback
+                                console.log('Window.open blocked, trying Office dialog...');
+                                Office.context.ui.displayDialogAsync(
+                                    reportUrl,
+                                    { height: 90, width: 70, displayInIframe: false },
+                                    (result) => {
+                                        if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                            console.log('Report opened successfully via dialog');
+                                            successMessage.textContent = '✓ Email processed successfully! Report opened.';
+                                        } else {
+                                            console.error('Failed to open report:', result.error.message);
+                                            // Method 3: Show clickable link as final fallback
+                                            successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                                        }
+                                    }
+                                );
                             }
-                        );
+                        } catch (openError) {
+                            console.error('Error opening report:', openError);
+                            // Show clickable link as fallback
+                            successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                        }
                     } else {
-                        successMessage.textContent = '✓ Form submitted! Report URL not available.';
+                        successMessage.textContent = '✓ Email processed successfully! Report URL not available.';
                     }
                     
                     pdfReady = true;
@@ -427,7 +454,7 @@ async function handleFormSubmit(e) {
         }
         
         if (!pdfReady) {
-            successMessage.textContent = '✓ Form submitted! Report is still processing...';
+            successMessage.textContent = '✓ Email processed successfully! Report is still processing...';
         }
         
         submitButton.textContent = 'Submitted';
