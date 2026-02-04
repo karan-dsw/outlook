@@ -206,10 +206,24 @@ function collapseForm() {
     const formBody = document.querySelector('.form-body');
     const submitSection = document.querySelector('.submit-section');
     const header = document.querySelector('.header');
+    const successMessage = document.getElementById('successMessage');
     
-    // Hide form body and submit section
-    if (formBody) formBody.style.display = 'none';
-    if (submitSection) submitSection.style.display = 'none';
+    console.log('Collapsing form...');
+    
+    // Hide form body, submit section, and success message
+    if (formBody) {
+        formBody.style.display = 'none';
+        console.log('Form body hidden');
+    }
+    if (submitSection) {
+        submitSection.style.display = 'none';
+        console.log('Submit section hidden');
+    }
+    if (successMessage) {
+        successMessage.classList.remove('show');
+        successMessage.style.display = 'none';
+        console.log('Success message hidden');
+    }
     
     // Add collapsed state styling
     if (formContainer) {
@@ -239,6 +253,7 @@ function collapseForm() {
     }
     
     successSummary.style.display = 'block';
+    console.log('Success summary displayed');
 }
 
 async function getEmailData() {
@@ -561,24 +576,19 @@ async function handleFormSubmit(e) {
                             
                             if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
                                 console.log('Report opened successfully in new window');
-                                successMessage.textContent = '✓ Email processed successfully! Report opened.';
                                 
-                                // Collapse the form after report opens
-                                setTimeout(() => {
-                                    collapseForm();
-                                }, 1500);
+                                // Close the taskpane
+                                Office.context.ui.closeContainer();
                             } else {
                                 console.log('Window blocked, showing link');
                                 successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" id="reportLink" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
                                 
-                                // Add click event to collapse form when link is clicked
+                                // Add click event to close taskpane when link is clicked
                                 setTimeout(() => {
                                     const reportLink = document.getElementById('reportLink');
                                     if (reportLink) {
                                         reportLink.addEventListener('click', () => {
-                                            setTimeout(() => {
-                                                collapseForm();
-                                            }, 1000);
+                                            Office.context.ui.closeContainer();
                                         });
                                     }
                                 }, 100);
@@ -587,14 +597,12 @@ async function handleFormSubmit(e) {
                             console.error('Error opening report:', openError);
                             successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" id="reportLinkError" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
                             
-                            // Add click event to collapse form when link is clicked
+                            // Add click event to close taskpane when link is clicked
                             setTimeout(() => {
                                 const reportLink = document.getElementById('reportLinkError');
                                 if (reportLink) {
                                     reportLink.addEventListener('click', () => {
-                                        setTimeout(() => {
-                                            collapseForm();
-                                        }, 1000);
+                                        Office.context.ui.closeContainer();
                                     });
                                 }
                             }, 100);
@@ -621,11 +629,6 @@ async function handleFormSubmit(e) {
         // Keep button as "Processed" and disabled permanently
         submitButton.textContent = 'Processed';
         submitButton.disabled = true;
-        
-        // Hide success message after 3 seconds but keep button as Processed
-        setTimeout(() => {
-            successMessage.classList.remove('show');
-        }, 3000);
         
     } catch (error) {
         console.error('Error submitting form:', error);
