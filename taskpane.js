@@ -5,7 +5,7 @@ Office.onReady((info) => {
     if (info.host === Office.HostType.Outlook) {
         mailboxItem = Office.context.mailbox.item;
         console.log('Office.js initialized successfully');
-        
+
         // Automatically trigger the flow when taskpane opens
         triggerFlowAndLoadForm();
     }
@@ -16,7 +16,7 @@ async function triggerFlowAndLoadForm() {
     const formContainer = document.getElementById('formContainer');
     const loadingText = document.querySelector('.loading-text');
     const loadingSubtext = document.querySelector('.loading-subtext');
-    
+
     try {
         // Show progress notification in email view
         Office.context.mailbox.item.notificationMessages.addAsync(
@@ -26,33 +26,33 @@ async function triggerFlowAndLoadForm() {
                 message: "Analyzing email and sending to workflow..."
             }
         );
-        
+
         // Step 1: Get email data
         loadingText.textContent = 'Collecting email data...';
         const emailData = await getEmailData();
         console.log('Email data collected:', emailData);
-        
+
         // Step 2: Trigger Power Automate flow
         loadingText.textContent = 'Triggering Power Automate flow...';
         loadingSubtext.textContent = 'Sending email data for processing';
-        
+
         const flowUrl = "https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/89c12382226642a4907cd110e9e7ab87/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Nbz7sUIbNoHlSBt_KVnF3CFKCCf9lPYn-LbIxZsWouA";
-        
+
         const response = await fetch(flowUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(emailData)
         });
-        
+
         Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-        
+
         if (!response.ok) {
             const err = await response.text();
             throw new Error(`HTTP ${response.status}: ${err}`);
         }
-        
+
         console.log('Flow triggered successfully');
-        
+
         // Step 3: Poll for extracted form data
         // Show notification for form data extraction
         Office.context.mailbox.item.notificationMessages.addAsync(
@@ -64,14 +64,14 @@ async function triggerFlowAndLoadForm() {
                 persistent: true
             }
         );
-        
+
         loadingText.textContent = 'Extracting form data from attachments...';
         loadingSubtext.textContent = 'This may take a few moments';
-        
+
         let extractedData = null;
         let pollingAttempts = 0;
         const maxPollingAttempts = 60; // 5 minutes max
-        
+
         while (pollingAttempts < maxPollingAttempts) {
             try {
                 const pendingResponse = await fetch("https://corinne-unstudded-uneugenically.ngrok-free.dev/api/pending", {
@@ -80,38 +80,49 @@ async function triggerFlowAndLoadForm() {
                         'Accept': 'application/json'
                     }
                 });
-                
+
                 if (pendingResponse.ok) {
                     const data = await pendingResponse.json();
                     console.log("Pending API response:", data);
-                    
-                    if (data.success && data.count > 0 && data.files && data.files.length > 0) {
-                        extractedData = data.files[0];
+
+                    // Check for unified API response format (single object)
+                    if (data.success && data.session_id && data.extracted_data) {
+                        extractedData = data.extracted_data;
+                        // Add session_id to the data for tracking
+                        extractedData.session_id = data.session_id;
+                        extractedData.processing_type = data.processing_type;
+
                         console.log("Extracted data received:", extractedData);
+                        break;
+                    }
+                    // Fallback for legacy format (files array)
+                    else if (data.success && data.files && data.files.length > 0) {
+                        extractedData = data.files[0];
+                        console.log("Extracted data received (legacy):", extractedData);
                         break;
                     }
                 }
             } catch (pollError) {
                 console.warn("Polling attempt failed:", pollError.message);
             }
-            
+
             // Wait 5 seconds before next attempt
             await new Promise(resolve => setTimeout(resolve, 5000));
             pollingAttempts++;
-            
+
             if (pollingAttempts % 6 === 0) {
                 loadingSubtext.textContent = `Still processing... (${Math.floor(pollingAttempts / 12)} minute${Math.floor(pollingAttempts / 12) > 1 ? 's' : ''})`;
             }
         }
-        
+
         if (!extractedData) {
             Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
             throw new Error('Timeout: Form data extraction did not complete in time');
         }
-        
+
         // Remove processing notification
         Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
-        
+
         // Show success notification
         Office.context.mailbox.item.notificationMessages.addAsync(
             "formSuccess",
@@ -122,24 +133,24 @@ async function triggerFlowAndLoadForm() {
                 persistent: false
             }
         );
-        
+
         // Step 4: Populate form with extracted data
         loadingText.textContent = 'Loading form...';
         loadingSubtext.textContent = 'Preparing your insurance policy information';
-        
+
         populateForm(extractedData);
-        
+
         // Show form, hide loading
         loadingContainer.style.display = 'none';
         formContainer.style.display = 'block';
-        
+
     } catch (error) {
         console.error('Error:', error);
-        
+
         // Remove any pending notifications
         Office.context.mailbox.item.notificationMessages.removeAsync("progress");
         Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
-        
+
         // Show error notification in email view
         Office.context.mailbox.item.notificationMessages.addAsync(
             "error",
@@ -148,7 +159,7 @@ async function triggerFlowAndLoadForm() {
                 message: "Processing failed: " + error.message
             }
         );
-        
+
         loadingText.textContent = 'Error occurred';
         loadingSubtext.innerHTML = `<div class="error-message">${error.message}</div>`;
     }
@@ -157,12 +168,12 @@ async function triggerFlowAndLoadForm() {
 function populateForm(extractedData) {
     // Store filename for later submission
     filename = extractedData.filename || '';
-    
+
     // Get email_fields from the extracted data
     const data = extractedData.email_fields || extractedData.extracted_data || {};
-    
+
     console.log("Populating form with data:", data);
-    
+
     // Populate form fields
     if (data.broker_email) document.getElementById('brokerEmail').value = data.broker_email;
     if (data.broker_name) document.getElementById('brokerName').value = data.broker_name;
@@ -173,7 +184,7 @@ function populateForm(extractedData) {
     if (data.broker_agency_id || data.agency_id) document.getElementById('agencyId').value = data.broker_agency_id || data.agency_id;
     if (data.email_summary) document.getElementById('emailSummary').value = data.email_summary;
     if (data.comments) document.getElementById('comments').value = data.comments;
-    
+
     // Set timestamp
     const timestampField = document.getElementById('timestamp');
     if (extractedData.detected_at) {
@@ -207,9 +218,9 @@ function collapseForm() {
     const submitSection = document.querySelector('.submit-section');
     const header = document.querySelector('.header');
     const successMessage = document.getElementById('successMessage');
-    
+
     console.log('Collapsing form...');
-    
+
     // Hide form body, submit section, and success message
     if (formBody) {
         formBody.style.display = 'none';
@@ -224,12 +235,12 @@ function collapseForm() {
         successMessage.style.display = 'none';
         console.log('Success message hidden');
     }
-    
+
     // Add collapsed state styling
     if (formContainer) {
         formContainer.style.transition = 'all 0.3s ease';
     }
-    
+
     // Create or update success summary
     let successSummary = document.getElementById('successSummary');
     if (!successSummary) {
@@ -245,13 +256,13 @@ function collapseForm() {
                 </div>
             </div>
         `;
-        
+
         // Insert after header
         if (header && header.parentNode) {
             header.parentNode.insertBefore(successSummary, header.nextSibling);
         }
     }
-    
+
     successSummary.style.display = 'block';
     console.log('Success summary displayed');
 }
@@ -266,7 +277,7 @@ async function getEmailData() {
 
     const itemId = item.itemId || "";
     const conversationId = item.conversationId || "";
-    
+
     console.log("Item ID:", itemId);
     console.log("Conversation ID:", conversationId);
 
@@ -327,7 +338,7 @@ async function getAttachmentContents(item) {
 
     for (const att of item.attachments) {
         console.log(`Processing attachment: ${att.name}`);
-        
+
         try {
             await new Promise(resolve => {
                 item.getAttachmentContentAsync(att.id, res => {
@@ -368,24 +379,24 @@ async function generateFormPDF(formData) {
     return new Promise((resolve) => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
+
         // Add header
         doc.setFillColor(249, 168, 37);
         doc.rect(0, 0, 210, 40, 'F');
-        
+
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
         doc.setFont(undefined, 'bold');
         doc.text('Insurance Policy Information', 105, 20, { align: 'center' });
-        
+
         doc.setFontSize(12);
         doc.setFont(undefined, 'normal');
         doc.text('Submitted Form Response', 105, 30, { align: 'center' });
-        
+
         // Reset text color for body
         doc.setTextColor(0, 0, 0);
         let yPos = 50;
-        
+
         // Add form fields
         const fields = [
             { label: "Sender's Email", value: formData.broker_email },
@@ -399,16 +410,16 @@ async function generateFormPDF(formData) {
             { label: "Comments", value: formData.comments, multiline: true },
             { label: "Timestamp", value: formData.timestamp }
         ];
-        
+
         fields.forEach(field => {
             if (field.value) {
                 doc.setFontSize(11);
                 doc.setFont(undefined, 'bold');
                 doc.text(field.label + ':', 20, yPos);
-                
+
                 doc.setFont(undefined, 'normal');
                 doc.setFontSize(10);
-                
+
                 if (field.multiline && field.value.length > 60) {
                     // Handle long text with wrapping
                     const lines = doc.splitTextToSize(field.value, 170);
@@ -427,14 +438,14 @@ async function generateFormPDF(formData) {
                     doc.text(field.value, 20, yPos);
                     yPos += 8;
                 }
-                
+
                 if (yPos > 270) {
                     doc.addPage();
                     yPos = 20;
                 }
             }
         });
-        
+
         // Add footer
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
@@ -442,9 +453,9 @@ async function generateFormPDF(formData) {
             doc.setFontSize(9);
             doc.setTextColor(128, 128, 128);
             doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
-            
+
         }
-        
+
         // Convert to base64
         const pdfBase64 = doc.output('dataurlstring').split(',')[1];
         resolve(pdfBase64);
@@ -452,7 +463,7 @@ async function generateFormPDF(formData) {
 }
 
 // Handle form submission
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const insuranceForm = document.getElementById('insuranceForm');
     if (insuranceForm) {
         insuranceForm.addEventListener('submit', handleFormSubmit);
@@ -461,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function handleFormSubmit(e) {
     e.preventDefault();
-    
+
     const formData = {
         broker_email: document.getElementById('brokerEmail').value,
         broker_name: document.getElementById('brokerName').value,
@@ -474,20 +485,20 @@ async function handleFormSubmit(e) {
         comments: document.getElementById('comments').value,
         timestamp: document.getElementById('timestamp').value
     };
-    
+
     const submitButton = document.querySelector('.submit-button');
     const successMessage = document.getElementById('successMessage');
-    
+
     try {
         submitButton.disabled = true;
         submitButton.textContent = 'Generating PDF...';
-        
+
         // Generate PDF from form data
         const pdfBase64 = await generateFormPDF(formData);
         console.log('PDF generated successfully');
-        
+
         submitButton.textContent = 'Submitting...';
-        
+
         // Step 3: Confirm email fields with PDF
         console.log('Confirming email fields...');
         const confirmResponse = await fetch('https://corinne-unstudded-uneugenically.ngrok-free.dev/api/email-fields', {
@@ -502,17 +513,17 @@ async function handleFormSubmit(e) {
                 form_pdf: pdfBase64  // Include the PDF in base64 format
             })
         });
-        
+
         if (!confirmResponse.ok) {
             throw new Error(`Email fields confirmation failed: ${confirmResponse.status}`);
         }
-        
+
         console.log('Email fields confirmed');
-        
+
         // Step 4: Process the file
         console.log('Processing file...');
         submitButton.textContent = 'Processing...';
-        
+
         const processResponse = await fetch('https://corinne-unstudded-uneugenically.ngrok-free.dev/api/process', {
             method: 'POST',
             headers: {
@@ -523,24 +534,24 @@ async function handleFormSubmit(e) {
                 filename: filename
             })
         });
-        
+
         if (!processResponse.ok) {
             throw new Error(`Processing failed: ${processResponse.status}`);
         }
-        
+
         const result = await processResponse.json();
         console.log('Processing successful:', result);
-        
+
         successMessage.textContent = '✓ Form submitted successfully! Generating report...';
         successMessage.classList.add('show');
         submitButton.textContent = 'Generating Report...';
-        
+
         // Step 5: Poll for PDF report - start immediately with shorter interval
         console.log('Waiting for PDF report...');
         let pdfReady = false;
         let pdfPollingAttempts = 0;
         const maxPdfPollingAttempts = 60; // 2 minutes max (60 attempts * 2 seconds)
-        
+
         while (pdfPollingAttempts < maxPdfPollingAttempts && !pdfReady) {
             try {
                 const pdfResponse = await fetch('https://corinne-unstudded-uneugenically.ngrok-free.dev/api/output-pdf', {
@@ -549,20 +560,20 @@ async function handleFormSubmit(e) {
                         'Accept': 'application/json'
                     }
                 });
-                
+
                 if (pdfResponse.status === 200) {
                     const pdfData = await pdfResponse.json();
                     console.log('PDF is ready!', pdfData);
-                    
+
                     const reportUrl = pdfData.pdf_url;
-                    
+
                     if (reportUrl) {
                         console.log('Opening report:', reportUrl);
-                        
+
                         // Open report in new window
                         try {
                             const newWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
-                            
+
                             if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
                                 console.log('Report opened successfully in new window');
                                 successMessage.textContent = '✓ Email processed successfully! Report opened.';
@@ -577,22 +588,22 @@ async function handleFormSubmit(e) {
                     } else {
                         successMessage.textContent = '✓ Email processed successfully! Report URL not available.';
                     }
-                    
+
                     pdfReady = true;
                     break;
                 }
             } catch (pollError) {
                 console.warn('PDF polling attempt failed:', pollError.message);
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 2000));
             pdfPollingAttempts++;
         }
-        
+
         if (!pdfReady) {
             successMessage.textContent = '✓ Email processed successfully! Report is still processing...';
         }
-        
+
         // Show persistent notification in email view
         Office.context.mailbox.item.notificationMessages.addAsync(
             "processSuccess",
@@ -603,29 +614,29 @@ async function handleFormSubmit(e) {
                 persistent: true
             }
         );
-        
+
         // Keep button as "Processed" and disabled permanently
         submitButton.textContent = 'Processed';
         submitButton.disabled = true;
-        
+
         // Close the taskpane after showing success notification
         setTimeout(() => {
             console.log('Closing taskpane...');
             Office.context.ui.closeContainer();
         }, 2000);
-        
+
     } catch (error) {
         console.error('Error submitting form:', error);
-        
+
         successMessage.textContent = '✗ Submission failed: ' + error.message;
         successMessage.style.background = '#fde7e9';
         successMessage.style.color = '#a80000';
         successMessage.style.borderLeft = '4px solid #a80000';
         successMessage.classList.add('show');
-        
+
         submitButton.disabled = false;
         submitButton.textContent = 'Submit';
-        
+
         setTimeout(() => {
             successMessage.classList.remove('show');
             successMessage.style.background = '#dff6dd';
