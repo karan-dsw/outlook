@@ -39,6 +39,7 @@
     </Form>
   </FormSettings>
   
+  
   <Permissions>ReadWriteMailbox</Permissions>
   
   <Rule xsi:type="RuleCollection" Mode="Or">
