@@ -531,6 +531,68 @@ async function handleFormSubmit(e) {
         const result = await processResponse.json();
         console.log('Processing successful:', result);
         
+        successMessage.textContent = '✓ Form submitted successfully! Generating report...';
+        successMessage.classList.add('show');
+        submitButton.textContent = 'Generating Report...';
+        
+        // Step 5: Poll for PDF report - start immediately with shorter interval
+        console.log('Waiting for PDF report...');
+        let pdfReady = false;
+        let pdfPollingAttempts = 0;
+        const maxPdfPollingAttempts = 60; // 2 minutes max (60 attempts * 2 seconds)
+        
+        while (pdfPollingAttempts < maxPdfPollingAttempts && !pdfReady) {
+            try {
+                const pdfResponse = await fetch('https://corinne-unstudded-uneugenically.ngrok-free.dev/api/output-pdf', {
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (pdfResponse.status === 200) {
+                    const pdfData = await pdfResponse.json();
+                    console.log('PDF is ready!', pdfData);
+                    
+                    const reportUrl = pdfData.pdf_url;
+                    
+                    if (reportUrl) {
+                        console.log('Opening report:', reportUrl);
+                        
+                        // Open report in new window
+                        try {
+                            const newWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
+                            
+                            if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
+                                console.log('Report opened successfully in new window');
+                                successMessage.textContent = '✓ Email processed successfully! Report opened.';
+                            } else {
+                                console.log('Window blocked, showing link');
+                                successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                            }
+                        } catch (openError) {
+                            console.error('Error opening report:', openError);
+                            successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                        }
+                    } else {
+                        successMessage.textContent = '✓ Email processed successfully! Report URL not available.';
+                    }
+                    
+                    pdfReady = true;
+                    break;
+                }
+            } catch (pollError) {
+                console.warn('PDF polling attempt failed:', pollError.message);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            pdfPollingAttempts++;
+        }
+        
+        if (!pdfReady) {
+            successMessage.textContent = '✓ Email processed successfully! Report is still processing...';
+        }
+        
         // Show persistent notification in email view
         Office.context.mailbox.item.notificationMessages.addAsync(
             "processSuccess",
@@ -542,9 +604,15 @@ async function handleFormSubmit(e) {
             }
         );
         
+        // Keep button as "Processed" and disabled permanently
+        submitButton.textContent = 'Processed';
+        submitButton.disabled = true;
+        
         // Close the taskpane after showing success notification
-        console.log('Closing taskpane...');
-        Office.context.ui.closeContainer();
+        setTimeout(() => {
+            console.log('Closing taskpane...');
+            Office.context.ui.closeContainer();
+        }, 2000);
         
     } catch (error) {
         console.error('Error submitting form:', error);
