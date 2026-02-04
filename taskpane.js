@@ -14,14 +14,21 @@ Office.onReady((info) => {
 
 function detectProcessingTypeFromAttachments(attachments) {
     // Check attachment names to determine processing type
+    console.log('Checking attachments for processing type detection:');
     for (const att of attachments) {
         const attName = att.name || '';
-        if (attName.toLowerCase().startsWith('c')) {
+        console.log(`  - Attachment: "${attName}"`);
+        
+        // Check if filename starts with 'C' followed by a number (C1, C2, C3, etc.)
+        if (/^c\d/i.test(attName)) {
+            console.log(`  ✓ Detected CLAIMS workflow (starts with C + number)`);
             return 'claims';
         } else if (attName.toLowerCase().startsWith('acord')) {
+            console.log(`  ✓ Detected UNDERWRITING workflow (starts with acord)`);
             return 'underwriting';
         }
     }
+    console.log('  → Defaulting to UNDERWRITING workflow');
     return 'underwriting'; // default
 }
 
