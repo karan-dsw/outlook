@@ -1,3 +1,7 @@
+// API URL Configuration
+const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
+const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
+
 let mailboxItem = null;
 let filename = '';
 let processingType = ''; // 'claims' or 'underwriting'
@@ -102,13 +106,14 @@ async function triggerFlowAndLoadForm() {
         let pollingAttempts = 0;
         const maxPollingAttempts = 60; // 5 minutes max
 
-        // Determine API prefix based on detected processing type
+        // Determine API URL and prefix based on detected processing type
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
-        console.log(`Using API prefix: ${apiPrefix}`);
+        const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
+        console.log(`Using API: ${apiBaseURL}${apiPrefix}`);
 
         while (pollingAttempts < maxPollingAttempts) {
             try {
-                const pendingResponse = await fetch(`https://corinne-unstudded-uneugenically.ngrok-free.dev${apiPrefix}/pending`, {
+                const pendingResponse = await fetch(`${apiBaseURL}${apiPrefix}/pending`, {
                     headers: {
                         'ngrok-skip-browser-warning': 'true',
                         'Accept': 'application/json'
@@ -537,8 +542,9 @@ async function handleFormSubmit(e) {
         // Step 3: Confirm email fields with PDF
         console.log('Confirming email fields...');
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
+        const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
         
-        const confirmResponse = await fetch(`https://corinne-unstudded-uneugenically.ngrok-free.dev${apiPrefix}/email-fields`, {
+        const confirmResponse = await fetch(`${apiBaseURL}${apiPrefix}/email-fields`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -561,7 +567,7 @@ async function handleFormSubmit(e) {
         console.log('Processing file...');
         submitButton.textContent = 'Processing...';
 
-        const processResponse = await fetch(`https://corinne-unstudded-uneugenically.ngrok-free.dev${apiPrefix}/process`, {
+        const processResponse = await fetch(`${apiBaseURL}${apiPrefix}/process`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -591,7 +597,7 @@ async function handleFormSubmit(e) {
 
         while (pdfPollingAttempts < maxPdfPollingAttempts && !pdfReady) {
             try {
-                const pdfResponse = await fetch(`https://corinne-unstudded-uneugenically.ngrok-free.dev${apiPrefix}/output-pdf`, {
+                const pdfResponse = await fetch(`${apiBaseURL}${apiPrefix}/output-pdf`, {
                     headers: {
                         'ngrok-skip-browser-warning': 'true',
                         'Accept': 'application/json'
