@@ -200,6 +200,47 @@ function populateForm(extractedData) {
     }
 }
 
+// Collapse form permanently after successful submission
+function collapseForm() {
+    const formContainer = document.getElementById('formContainer');
+    const formBody = document.querySelector('.form-body');
+    const submitSection = document.querySelector('.submit-section');
+    const header = document.querySelector('.header');
+    
+    // Hide form body and submit section
+    if (formBody) formBody.style.display = 'none';
+    if (submitSection) submitSection.style.display = 'none';
+    
+    // Add collapsed state styling
+    if (formContainer) {
+        formContainer.style.transition = 'all 0.3s ease';
+    }
+    
+    // Create or update success summary
+    let successSummary = document.getElementById('successSummary');
+    if (!successSummary) {
+        successSummary = document.createElement('div');
+        successSummary.id = 'successSummary';
+        successSummary.className = 'success-summary';
+        successSummary.innerHTML = `
+            <div class="success-summary-content">
+                <div class="success-icon">✓</div>
+                <div class="success-text">
+                    <h3>Form Submitted Successfully</h3>
+                    <p>Your insurance policy information has been processed and the report has been generated.</p>
+                </div>
+            </div>
+        `;
+        
+        // Insert after header
+        if (header && header.parentNode) {
+            header.parentNode.insertBefore(successSummary, header.nextSibling);
+        }
+    }
+    
+    successSummary.style.display = 'block';
+}
+
 async function getEmailData() {
     const item = mailboxItem;
     if (!item) throw new Error("No email context");
@@ -521,13 +562,42 @@ async function handleFormSubmit(e) {
                             if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
                                 console.log('Report opened successfully in new window');
                                 successMessage.textContent = '✓ Email processed successfully! Report opened.';
+                                
+                                // Collapse the form after report opens
+                                setTimeout(() => {
+                                    collapseForm();
+                                }, 1500);
                             } else {
                                 console.log('Window blocked, showing link');
-                                successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                                successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" id="reportLink" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                                
+                                // Add click event to collapse form when link is clicked
+                                setTimeout(() => {
+                                    const reportLink = document.getElementById('reportLink');
+                                    if (reportLink) {
+                                        reportLink.addEventListener('click', () => {
+                                            setTimeout(() => {
+                                                collapseForm();
+                                            }, 1000);
+                                        });
+                                    }
+                                }, 100);
                             }
                         } catch (openError) {
                             console.error('Error opening report:', openError);
-                            successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                            successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" id="reportLinkError" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                            
+                            // Add click event to collapse form when link is clicked
+                            setTimeout(() => {
+                                const reportLink = document.getElementById('reportLinkError');
+                                if (reportLink) {
+                                    reportLink.addEventListener('click', () => {
+                                        setTimeout(() => {
+                                            collapseForm();
+                                        }, 1000);
+                                    });
+                                }
+                            }, 100);
                         }
                     } else {
                         successMessage.textContent = '✓ Email processed successfully! Report URL not available.';
@@ -548,12 +618,13 @@ async function handleFormSubmit(e) {
             successMessage.textContent = '✓ Email processed successfully! Report is still processing...';
         }
         
-        submitButton.textContent = 'Submitted';
+        // Keep button as "Processed" and disabled permanently
+        submitButton.textContent = 'Processed';
+        submitButton.disabled = true;
         
+        // Hide success message after 3 seconds but keep button as Processed
         setTimeout(() => {
             successMessage.classList.remove('show');
-            submitButton.disabled = false;
-            submitButton.textContent = 'Submit';
         }, 3000);
         
     } catch (error) {
