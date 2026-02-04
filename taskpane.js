@@ -12,6 +12,19 @@ Office.onReady((info) => {
     }
 });
 
+function detectProcessingTypeFromAttachments(attachments) {
+    // Check attachment names to determine processing type
+    for (const att of attachments) {
+        const attName = att.name || '';
+        if (attName.toLowerCase().startsWith('c')) {
+            return 'claims';
+        } else if (attName.toLowerCase().startsWith('acord')) {
+            return 'underwriting';
+        }
+    }
+    return 'underwriting'; // default
+}
+
 async function triggerFlowAndLoadForm() {
     const loadingContainer = document.getElementById('loadingContainer');
     const formContainer = document.getElementById('formContainer');
@@ -28,10 +41,19 @@ async function triggerFlowAndLoadForm() {
             }
         );
 
-        // Step 1: Get email data
+        // Step 1: Get email data and detect processing type from attachments
         loadingText.textContent = 'Collecting email data...';
         const emailData = await getEmailData();
         console.log('Email data collected:', emailData);
+        
+        // Detect processing type from attachments BEFORE polling
+        if (mailboxItem && mailboxItem.attachments && mailboxItem.attachments.length > 0) {
+            processingType = detectProcessingTypeFromAttachments(mailboxItem.attachments);
+            console.log(`Processing type detected from attachments: ${processingType.toUpperCase()}`);
+        } else {
+            processingType = 'underwriting'; // default
+            console.log('No attachments found, defaulting to: UNDERWRITING');
+        }
 
         // Step 2: Trigger Power Automate flow
         loadingText.textContent = 'Triggering Power Automate flow...';
@@ -73,12 +95,13 @@ async function triggerFlowAndLoadForm() {
         let pollingAttempts = 0;
         const maxPollingAttempts = 60; // 5 minutes max
 
+        // Determine API prefix based on detected processing type
+        const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
+        console.log(`Using API prefix: ${apiPrefix}`);
+
         while (pollingAttempts < maxPollingAttempts) {
             try {
-                // Note: At this stage we don't know the processing type yet,
-                // so we try /api/pending first (underwriting default)
-                // The processing_type will be determined once we get the data
-                const pendingResponse = await fetch("https://corinne-unstudded-uneugenically.ngrok-free.dev/api/pending", {
+                const pendingResponse = await fetch(`https://corinne-unstudded-uneugenically.ngrok-free.dev${apiPrefix}/pending`, {
                     headers: {
                         'ngrok-skip-browser-warning': 'true',
                         'Accept': 'application/json'
@@ -172,20 +195,7 @@ async function triggerFlowAndLoadForm() {
 function populateForm(extractedData) {
     // Store filename for later submission
     filename = extractedData.filename || '';
-
-    // Detect processing type based on filename prefix
-    if (filename) {
-        if (filename.toLowerCase().startsWith('c')) {
-            processingType = 'claims';
-            console.log('Processing type detected: CLAIMS');
-        } else if (filename.toLowerCase().startsWith('acord')) {
-            processingType = 'underwriting';
-            console.log('Processing type detected: UNDERWRITING');
-        } else {
-            processingType = 'underwriting'; // default
-            console.log('Processing type defaulted to: UNDERWRITING');
-        }
-    }
+    console.log(`Populating form for ${processingType.toUpperCase()} workflow with file: ${filename}`);
 
     // Get email_fields from the extracted data
     const data = extractedData.email_fields || extractedData.extracted_data || {};
@@ -520,7 +530,6 @@ async function handleFormSubmit(e) {
         // Step 3: Confirm email fields with PDF
         console.log('Confirming email fields...');
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
-        console.log(`Using API prefix: ${apiPrefix}`);
         
         const confirmResponse = await fetch(`https://corinne-unstudded-uneugenically.ngrok-free.dev${apiPrefix}/email-fields`, {
             method: 'POST',
