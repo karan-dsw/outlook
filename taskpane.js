@@ -22,7 +22,7 @@ function detectProcessingTypeFromAttachments(attachments) {
     for (const att of attachments) {
         const attName = att.name || '';
         console.log(`  - Attachment: "${attName}"`);
-        
+
         // Check if filename starts with 'C' followed by a number (C1, C2, C3, etc.)
         if (/^c\d/i.test(attName)) {
             console.log(`  ✓ Detected CLAIMS workflow (starts with C + number)`);
@@ -56,7 +56,7 @@ async function triggerFlowAndLoadForm() {
         loadingText.textContent = 'Collecting email data...';
         const emailData = await getEmailData();
         console.log('Email data collected:', emailData);
-        
+
         // Detect processing type from attachments BEFORE polling
         if (mailboxItem && mailboxItem.attachments && mailboxItem.attachments.length > 0) {
             processingType = detectProcessingTypeFromAttachments(mailboxItem.attachments);
@@ -543,7 +543,7 @@ async function handleFormSubmit(e) {
         console.log('Confirming email fields...');
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
         const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
-        
+
         const confirmResponse = await fetch(`${apiBaseURL}${apiPrefix}/email-fields`, {
             method: 'POST',
             headers: {
@@ -627,6 +627,21 @@ async function handleFormSubmit(e) {
                         } catch (openError) {
                             console.error('Error opening report:', openError);
                             successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
+                        }
+
+                        // NEW: Open claims management page after PDF report (only for claims workflow)
+                        if (processingType === 'claims') {
+                            console.log('Opening claims management page in 2 seconds...');
+                            setTimeout(() => {
+                                const claimsUrl = `${CLAIMS_API_URL}/claims`;
+                                console.log('Opening claims page:', claimsUrl);
+                                try {
+                                    window.open(claimsUrl, '_blank', 'noopener,noreferrer');
+                                    console.log('Claims management page opened');
+                                } catch (claimsOpenError) {
+                                    console.error('Error opening claims page:', claimsOpenError);
+                                }
+                            }, 2000);
                         }
                     } else {
                         successMessage.textContent = '✓ Email processed successfully! Report URL not available.';
