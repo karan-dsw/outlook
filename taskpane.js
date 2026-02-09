@@ -613,64 +613,45 @@ async function handleFormSubmit(e) {
                     const pdfData = await pdfResponse.json();
                     console.log('PDF is ready!', pdfData);
 
+                    // Prepare URLs
                     const reportUrl = pdfData.pdf_url;
+                    const sessionID = extractedData ? (extractedData.session_id || extractedData._session_id) : '';
+                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-new?session_id=${sessionID}`;
+                    const claimsUrl = `${CLAIMS_API_URL}/claims`;
 
-                    if (reportUrl) {
-                        console.log('Opening report:', reportUrl);
-
-                        // Open report in new window
-                        try {
-                            const newWindow = window.open(reportUrl, '_blank', 'noopener,noreferrer');
-
-                            if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
-                                console.log('Report opened successfully in new window');
-                                successMessage.textContent = '✓ Email processed successfully! Report opened.';
-                            } else {
-                                console.log('Window blocked, showing link');
-                                successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
-                            }
-                        } catch (openError) {
-                            console.error('Error opening report:', openError);
-                            successMessage.innerHTML = `✓ Email processed successfully! <a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold;">Click here to open report</a>`;
-                        }
-
-                        // NEW: Open claims management page after PDF report (only for claims workflow)
-                        if (processingType === 'claims') {
-                            console.log('Opening claims management page in 2 seconds...');
-                            setTimeout(() => {
-                                const claimsUrl = `${CLAIMS_API_URL}/claims`;
-                                console.log('Opening claims page:', claimsUrl);
-                                try {
-                                    window.open(claimsUrl, '_blank', 'noopener,noreferrer');
-                                    console.log('Claims management page opened');
-                                } catch (claimsOpenError) {
-                                    console.error('Error opening claims page:', claimsOpenError);
-                                }
-                            }, 2000);
-                        }
-
-                        // NEW: Open policy management page after PDF report (for underwriting workflow)
-                        if (processingType === 'underwriting') {
-                            console.log('Opening policy new page in 2 seconds...');
-                            setTimeout(() => {
-                                // Use the session_id to link the record
-                                const sessionID = extractedData ? (extractedData.session_id || extractedData._session_id) : '';
-                                const policyUrl = `${UNDERWRITING_API_URL}/policy-new?session_id=${sessionID}`;
-                                console.log('Opening policy page:', policyUrl);
-                                try {
-                                    window.open(policyUrl, '_blank', 'noopener,noreferrer');
-                                    console.log('Policy management page opened');
-                                } catch (policyOpenError) {
-                                    console.error('Error opening policy page:', policyOpenError);
-                                }
-                            }, 2000);
-                        }
-                    } else {
-                        successMessage.textContent = '✓ Email processed successfully! Report URL not available.';
+                    console.log('Opening report:', reportUrl);
+                    try {
+                        window.open(reportUrl, '_blank', 'noopener,noreferrer');
+                    } catch (e) {
+                        console.error('Error opening report:', e);
                     }
 
+                    // Update success message with fallback links
+                    let successHtml = `✓ Email processed successfully!<br><br>`;
+                    successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold; display: block; margin-bottom: 12px;">📂 Open Processed Report</a>`;
+
+                    if (processingType === 'claims') {
+                        successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0b7815; text-decoration: underline; font-weight: bold; display: block;">📋 Open Claims Management</a>`;
+
+                        // Also try automatic open for claims
+                        setTimeout(() => {
+                            try { window.open(claimsUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
+                        }, 2000);
+                    } else if (processingType === 'underwriting') {
+                        successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0b7815; text-decoration: underline; font-weight: bold; display: block;">📝 Create New Policy</a>`;
+
+                        // Also try automatic open for underwriting
+                        setTimeout(() => {
+                            try { window.open(underwritingUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
+                        }, 2000);
+                    }
+
+                    successMessage.innerHTML = successHtml;
+                    successMessage.classList.add('show');
                     pdfReady = true;
                     break;
+                } else {
+                    console.log('Waiting for PDF report...');
                 }
             } catch (pollError) {
                 console.warn('PDF polling attempt failed:', pollError.message);
