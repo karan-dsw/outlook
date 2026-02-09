@@ -648,6 +648,23 @@ async function handleFormSubmit(e) {
                                 }
                             }, 2000);
                         }
+
+                        // NEW: Open policy management page after PDF report (for underwriting workflow)
+                        if (processingType === 'underwriting') {
+                            console.log('Opening policy new page in 2 seconds...');
+                            setTimeout(() => {
+                                // Use the session_id to link the record
+                                const sessionID = extractedData ? (extractedData.session_id || extractedData._session_id) : '';
+                                const policyUrl = `${UNDERWRITING_API_URL}/policy-new?session_id=${sessionID}`;
+                                console.log('Opening policy page:', policyUrl);
+                                try {
+                                    window.open(policyUrl, '_blank', 'noopener,noreferrer');
+                                    console.log('Policy management page opened');
+                                } catch (policyOpenError) {
+                                    console.error('Error opening policy page:', policyOpenError);
+                                }
+                            }, 2000);
+                        }
                     } else {
                         successMessage.textContent = '✓ Email processed successfully! Report URL not available.';
                     }
