@@ -6,6 +6,7 @@ const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free
 let mailboxItem = null;
 let filename = '';
 let processingType = ''; // 'claims' or 'underwriting'
+let extractedData = null; // Store extracted data globally
 
 Office.onReady((info) => {
     if (info.host === Office.HostType.Outlook) {
@@ -103,7 +104,7 @@ async function triggerFlowAndLoadForm() {
         loadingText.textContent = 'Extracting form data from attachments...';
         loadingSubtext.textContent = 'This may take a few moments';
 
-        let extractedData = null;
+        // extractedData is already declared globally
         let pollingAttempts = 0;
         const maxPollingAttempts = 60; // 5 minutes max
 
