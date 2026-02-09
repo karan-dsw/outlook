@@ -378,21 +378,25 @@ async function getAttachmentContents(item) {
     const results = [];
 
     for (const att of item.attachments) {
-        console.log(`Processing attachment: ${att.name}`);
+        console.log(`Retrieving content for attachment: ${att.name} (ID: ${att.id})`);
 
         try {
             await new Promise(resolve => {
-                item.getAttachmentContentAsync(att.id, res => {
+                // Explicitly request Base64 format for file attachments
+                item.getAttachmentContentAsync(att.id, { format: Office.MailboxEnums.AttachmentContentFormat.Base64 }, res => {
                     if (res.status === Office.AsyncResultStatus.Succeeded) {
+                        console.log(`  ✓ Successfully retrieved ${att.name}`);
                         results.push({
                             id: att.id,
                             name: att.name,
                             contentType: att.contentType,
                             size: att.size,
-                            content: res.value.content,
+                            content: res.value.content, // legacy field name
+                            contentBytes: res.value.content, // standard name for Power Automate
                             format: res.value.format
                         });
                     } else {
+                        console.error(`  ✗ Failed to retrieve ${att.name}: ${res.error ? res.error.message : 'Unknown error'}`);
                         results.push({
                             id: att.id,
                             name: att.name,
