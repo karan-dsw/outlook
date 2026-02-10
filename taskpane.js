@@ -233,8 +233,10 @@ function populateForm(extractedData) {
     });
 
     if (policyNumberEl && data.policy_number) policyNumberEl.value = data.policy_number;
-    // Populate Document Name field with email subject
-    if (documentNameEl && data.subject) documentNameEl.value = data.subject;
+    // Populate Document Name field with email subject (primary) or attachment name (fallback)
+    if (documentNameEl) {
+        documentNameEl.value = data.subject;
+    }
     // if (subjectNameEl && data.subject) subjectNameEl.value = data.subject;
     if (commentsEl && data.comments) commentsEl.value = data.comments;
 
