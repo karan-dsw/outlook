@@ -183,6 +183,9 @@ async function triggerFlowAndLoadForm() {
         loadingContainer.style.display = 'none';
         formContainer.style.display = 'block';
 
+        // Small delay to ensure DOM is fully rendered
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // Now populate the form
         populateForm(extractedData);
 
@@ -223,6 +226,14 @@ function populateForm(extractedData) {
     const subjectNameEl = document.getElementById('subjectName');
     const commentsEl = document.getElementById('comments');
 
+    // Debug logging
+    console.log('Form elements found:', {
+        policyNumber: !!policyNumberEl,
+        documentName: !!documentNameEl,
+        subjectName: !!subjectNameEl,
+        comments: !!commentsEl
+    });
+
     if (policyNumberEl && data.policy_number) policyNumberEl.value = data.policy_number;
     if (documentNameEl && data.document_name) documentNameEl.value = data.document_name;
     if (subjectNameEl && data.subject) subjectNameEl.value = data.subject;
@@ -239,30 +250,32 @@ function populateForm(extractedData) {
 
     // Set timestamp
     const timestampField = document.getElementById('timestamp');
-    if (data.timestamp) {
-        // Use timestamp from backend if available
-        timestampField.value = data.timestamp;
-    } else if (extractedData.detected_at) {
-        // Format detected_at timestamp (remove seconds)
-        const detectedDate = new Date(extractedData.detected_at);
-        timestampField.value = detectedDate.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-    } else {
-        const now = new Date();
-        timestampField.value = now.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
+    if (timestampField) {
+        if (data.timestamp) {
+            // Use timestamp from backend if available
+            timestampField.value = data.timestamp;
+        } else if (extractedData.detected_at) {
+            // Format detected_at timestamp (remove seconds)
+            const detectedDate = new Date(extractedData.detected_at);
+            timestampField.value = detectedDate.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        } else {
+            const now = new Date();
+            timestampField.value = now.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
     }
 }
 
