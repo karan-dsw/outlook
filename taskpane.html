@@ -154,6 +154,7 @@
             background: white;
             transition: all 0.2s ease;
             outline: none;
+            resize: vertical;
         }
 
         .form-input:hover {
@@ -169,6 +170,11 @@
             background: #f3f2f1;
             color: #605e5c;
             cursor: not-allowed;
+        }
+
+        textarea.form-input {
+            min-height: 80px;
+            resize: vertical;
         }
 
         .input-hint {
@@ -324,7 +330,7 @@
                     ✓ Form submitted successfully!
                 </div>
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="brokerEmail">
                         Sender's Email <span class="required">*</span>
                     </label>
@@ -336,9 +342,9 @@
                         placeholder="sender@example.com"
                         required
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="brokerName">
                         Sender's Name <span class="required">*</span>
                     </label>
@@ -350,9 +356,9 @@
                         placeholder="Enter sender name"
                         required
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="underwriterEmail">
                         Receiver's Email <span class="required">*</span>
                     </label>
@@ -364,9 +370,9 @@
                         placeholder="receiver@example.com"
                         required
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="underwriterName">
                         Receiver's Name <span class="required">*</span>
                     </label>
@@ -378,7 +384,7 @@
                         placeholder="Enter receiver name"
                         required
                     >
-                </div>
+                </div> -->
 
                 <div class="form-section">
                     <label class="form-label" for="policyNumber">
@@ -395,6 +401,48 @@
                 </div>
 
                 <div class="form-section">
+                    <label class="form-label" for="documentName">
+                        Document Name <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="documentName" 
+                        name="documentName" 
+                        class="form-input" 
+                        placeholder="Enter document name"
+                        required
+                    >
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label" for="subjectName">
+                        Subject Name <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="subjectName" 
+                        name="subjectName" 
+                        class="form-input" 
+                        placeholder="Enter subject name"
+                        required
+                    >
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label" for="comments">
+                        Comments <span class="required">*</span>
+                    </label>
+                    <textarea 
+                        id="comments" 
+                        name="comments" 
+                        class="form-input" 
+                        rows="4"
+                        placeholder="Enter comments"
+                        required
+                    ></textarea>
+                </div>
+
+                <!-- <div class="form-section">
                     <label class="form-label" for="agencyName">
                         Agency Name
                     </label>
@@ -405,9 +453,9 @@
                         class="form-input" 
                         placeholder="Enter agency name"
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="agencyId">
                         Agency/Broker ID
                     </label>
@@ -418,9 +466,9 @@
                         class="form-input" 
                         placeholder="Enter agency or broker ID"
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="emailSummary">
                         Email Summary
                     </label>
@@ -431,24 +479,11 @@
                         rows="4"
                         placeholder="Summary of the email content"
                     ></textarea>
-                </div>
-
-                <div class="form-section">
-                    <label class="form-label" for="comments">
-                        Comments
-                    </label>
-                    <textarea 
-                        id="comments" 
-                        name="comments" 
-                        class="form-input" 
-                        rows="3"
-                        placeholder="Additional comments"
-                    ></textarea>
-                </div>
+                </div> -->
 
                 <div class="form-section">
                     <label class="form-label" for="timestamp">
-                        Timestamp
+                        Timestamp <span class="required">*</span>
                     </label>
                     <input 
                         type="text" 
