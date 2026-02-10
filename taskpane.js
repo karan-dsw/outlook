@@ -38,6 +38,64 @@ function detectProcessingTypeFromAttachments(attachments) {
     return 'underwriting'; // default
 }
 
+// Function to extract form fields directly from email data
+function extractFormFieldsFromEmail(emailData) {
+    console.log('Extracting form fields from email data...');
+    
+    const formFields = {
+        policy_number: '',
+        document_name: '',
+        subject: '',
+        comments: '',
+        timestamp: ''
+    };
+
+    // Extract policy number from subject or body using regex
+    const policyRegex = /(?:policy\s*(?:no|number|#)?[:\s]*)?([A-Z]?\d{6,12})/i;
+    const subjectMatch = emailData.subject?.match(policyRegex);
+    if (subjectMatch) {
+        formFields.policy_number = subjectMatch[1];
+    }
+
+    // Extract document name from first attachment
+    if (emailData.attachments && emailData.attachments.length > 0) {
+        formFields.document_name = emailData.attachments[0].name || '';
+        filename = emailData.attachments[0].name || '';
+    }
+
+    // Use email subject as subject name
+    formFields.subject = emailData.subject || '';
+
+    // Leave comments empty - user will add manually
+    formFields.comments = '';
+
+    // Format timestamp from receivedDateTime
+    if (emailData.receivedDateTime) {
+        const date = new Date(emailData.receivedDateTime);
+        formFields.timestamp = date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    } else {
+        const now = new Date();
+        formFields.timestamp = now.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+
+    console.log('Extracted form fields:', formFields);
+    return formFields;
+}
+
 async function triggerFlowAndLoadForm() {
     const loadingContainer = document.getElementById('loadingContainer');
     const formContainer = document.getElementById('formContainer');
@@ -59,7 +117,7 @@ async function triggerFlowAndLoadForm() {
         const emailData = await getEmailData();
         console.log('Email data collected:', emailData);
 
-        // Detect processing type from attachments BEFORE polling
+        // Detect processing type from attachments
         if (mailboxItem && mailboxItem.attachments && mailboxItem.attachments.length > 0) {
             processingType = detectProcessingTypeFromAttachments(mailboxItem.attachments);
             console.log(`Processing type detected from attachments: ${processingType.toUpperCase()}`);
@@ -68,101 +126,41 @@ async function triggerFlowAndLoadForm() {
             console.log('No attachments found, defaulting to: UNDERWRITING');
         }
 
-        // Step 2: Trigger Power Automate flow
+        // Step 2: Extract form fields from email data immediately
+        loadingText.textContent = 'Extracting form data...';
+        loadingSubtext.textContent = 'Parsing email content';
+        
+        const formFields = extractFormFieldsFromEmail(emailData);
+        
+        // Prepare extracted data object
+        extractedData = {
+            filename: formFields.document_name,
+            email_fields: formFields,
+            detected_at: emailData.receivedDateTime || new Date().toISOString()
+        };
+
+        // Step 3: Trigger Power Automate flow (async, don't wait)
         loadingText.textContent = 'Triggering Power Automate flow...';
         loadingSubtext.textContent = 'Sending email data for processing';
 
         const flowUrl = "https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/89c12382226642a4907cd110e9e7ab87/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Nbz7sUIbNoHlSBt_KVnF3CFKCCf9lPYn-LbIxZsWouA";
 
-        const response = await fetch(flowUrl, {
+        // Trigger flow but don't wait for response (fire and forget)
+        fetch(flowUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(emailData)
+        }).then(response => {
+            if (response.ok) {
+                console.log('Flow triggered successfully');
+            } else {
+                console.warn('Flow trigger failed:', response.status);
+            }
+        }).catch(err => {
+            console.warn('Flow trigger error:', err);
         });
 
         Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`HTTP ${response.status}: ${err}`);
-        }
-
-        console.log('Flow triggered successfully');
-
-        // Step 3: Poll for extracted form data
-        // Show notification for form data extraction
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "formProcessing",
-            {
-                type: "informationalMessage",
-                message: "Extracting form data from attachments...",
-                icon: "Icon.80x80",
-                persistent: true
-            }
-        );
-
-        loadingText.textContent = 'Extracting form data from attachments...';
-        loadingSubtext.textContent = 'This may take a few moments';
-
-        // extractedData is already declared globally
-        let pollingAttempts = 0;
-        const maxPollingAttempts = 60; // 5 minutes max
-
-        // Determine API URL and prefix based on detected processing type
-        const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
-        const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
-        console.log(`Using API: ${apiBaseURL}${apiPrefix}`);
-
-        while (pollingAttempts < maxPollingAttempts) {
-            try {
-                const pendingResponse = await fetch(`${apiBaseURL}${apiPrefix}/pending`, {
-                    headers: {
-                        'ngrok-skip-browser-warning': 'true',
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (pendingResponse.ok) {
-                    const data = await pendingResponse.json();
-                    console.log("Pending API response:", data);
-
-                    // Check for unified API response format (single object)
-                    if (data.success && data.session_id && data.extracted_data) {
-                        extractedData = data.extracted_data;
-                        // Add session_id to the data for tracking
-                        extractedData.session_id = data.session_id;
-                        extractedData.processing_type = data.processing_type;
-
-                        console.log("Extracted data received:", extractedData);
-                        break;
-                    }
-                    // Fallback for legacy format (files array)
-                    else if (data.success && data.files && data.files.length > 0) {
-                        extractedData = data.files[0];
-                        console.log("Extracted data received (legacy):", extractedData);
-                        break;
-                    }
-                }
-            } catch (pollError) {
-                console.warn("Polling attempt failed:", pollError.message);
-            }
-
-            // Wait 5 seconds before next attempt
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            pollingAttempts++;
-
-            if (pollingAttempts % 6 === 0) {
-                loadingSubtext.textContent = `Still processing... (${Math.floor(pollingAttempts / 12)} minute${Math.floor(pollingAttempts / 12) > 1 ? 's' : ''})`;
-            }
-        }
-
-        if (!extractedData) {
-            Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
-            throw new Error('Timeout: Form data extraction did not complete in time');
-        }
-
-        // Remove processing notification
-        Office.context.mailbox.item.notificationMessages.removeAsync("formProcessing");
 
         // Show success notification
         Office.context.mailbox.item.notificationMessages.addAsync(
@@ -175,7 +173,7 @@ async function triggerFlowAndLoadForm() {
             }
         );
 
-        // Step 4: Show form first, then populate
+        // Step 4: Show form and populate immediately
         loadingText.textContent = 'Loading form...';
         loadingSubtext.textContent = 'Preparing your insurance policy information';
 
