@@ -216,20 +216,27 @@ function populateForm(extractedData) {
 
     console.log("Populating form with data:", data);
 
-    // Populate form fields
-    if (data.broker_email) document.getElementById('brokerEmail').value = data.broker_email;
-    if (data.broker_name) document.getElementById('brokerName').value = data.broker_name;
-    if (data.underwriter_email) document.getElementById('underwriterEmail').value = data.underwriter_email;
-    if (data.underwriter_name) document.getElementById('underwriterName').value = data.underwriter_name;
+    // Populate form fields - only the 5 required fields
     if (data.policy_number) document.getElementById('policyNumber').value = data.policy_number;
-    if (data.broker_agency_name) document.getElementById('agencyName').value = data.broker_agency_name;
-    if (data.broker_agency_id || data.agency_id) document.getElementById('agencyId').value = data.broker_agency_id || data.agency_id;
-    if (data.email_summary) document.getElementById('emailSummary').value = data.email_summary;
+    if (data.document_name) document.getElementById('documentName').value = data.document_name;
+    if (data.subject) document.getElementById('subjectName').value = data.subject;
     if (data.comments) document.getElementById('comments').value = data.comments;
+    
+    // Commented out old fields
+    // if (data.broker_email) document.getElementById('brokerEmail').value = data.broker_email;
+    // if (data.broker_name) document.getElementById('brokerName').value = data.broker_name;
+    // if (data.underwriter_email) document.getElementById('underwriterEmail').value = data.underwriter_email;
+    // if (data.underwriter_name) document.getElementById('underwriterName').value = data.underwriter_name;
+    // if (data.broker_agency_name) document.getElementById('agencyName').value = data.broker_agency_name;
+    // if (data.broker_agency_id || data.agency_id) document.getElementById('agencyId').value = data.broker_agency_id || data.agency_id;
+    // if (data.email_summary) document.getElementById('emailSummary').value = data.email_summary;
 
     // Set timestamp
     const timestampField = document.getElementById('timestamp');
-    if (extractedData.detected_at) {
+    if (data.timestamp) {
+        // Use timestamp from backend if available
+        timestampField.value = data.timestamp;
+    } else if (extractedData.detected_at) {
         // Format detected_at timestamp (remove seconds)
         const detectedDate = new Date(extractedData.detected_at);
         timestampField.value = detectedDate.toLocaleString('en-US', {
@@ -443,18 +450,21 @@ async function generateFormPDF(formData) {
         doc.setTextColor(0, 0, 0);
         let yPos = 50;
 
-        // Add form fields
+        // Add form fields - only the 5 required fields
         const fields = [
-            { label: "Sender's Email", value: formData.broker_email },
-            { label: "Sender's Name", value: formData.broker_name },
-            { label: "Receiver's Email", value: formData.underwriter_email },
-            { label: "Receiver's Name", value: formData.underwriter_name },
             { label: "Policy Number", value: formData.policy_number },
-            { label: "Agency Name", value: formData.broker_agency_name },
-            { label: "Agency/Broker ID", value: formData.broker_agency_id },
-            { label: "Email Summary", value: formData.email_summary, multiline: true },
+            { label: "Document Name", value: formData.document_name },
+            { label: "Subject Name", value: formData.subject },
             { label: "Comments", value: formData.comments, multiline: true },
             { label: "Timestamp", value: formData.timestamp }
+            // Commented out old fields
+            // { label: "Sender's Email", value: formData.broker_email },
+            // { label: "Sender's Name", value: formData.broker_name },
+            // { label: "Receiver's Email", value: formData.underwriter_email },
+            // { label: "Receiver's Name", value: formData.underwriter_name },
+            // { label: "Agency Name", value: formData.broker_agency_name },
+            // { label: "Agency/Broker ID", value: formData.broker_agency_id },
+            // { label: "Email Summary", value: formData.email_summary, multiline: true },
         ];
 
         fields.forEach(field => {
@@ -520,16 +530,19 @@ async function handleFormSubmit(e) {
     e.preventDefault();
 
     const formData = {
-        broker_email: document.getElementById('brokerEmail').value,
-        broker_name: document.getElementById('brokerName').value,
-        underwriter_email: document.getElementById('underwriterEmail').value,
-        underwriter_name: document.getElementById('underwriterName').value,
         policy_number: document.getElementById('policyNumber').value,
-        broker_agency_name: document.getElementById('agencyName').value,
-        broker_agency_id: document.getElementById('agencyId').value,
-        email_summary: document.getElementById('emailSummary').value,
+        document_name: document.getElementById('documentName').value,
+        subject: document.getElementById('subjectName').value,
         comments: document.getElementById('comments').value,
         timestamp: document.getElementById('timestamp').value
+        // Commented out old fields
+        // broker_email: document.getElementById('brokerEmail').value,
+        // broker_name: document.getElementById('brokerName').value,
+        // underwriter_email: document.getElementById('underwriterEmail').value,
+        // underwriter_name: document.getElementById('underwriterName').value,
+        // broker_agency_name: document.getElementById('agencyName').value,
+        // broker_agency_id: document.getElementById('agencyId').value,
+        // email_summary: document.getElementById('emailSummary').value,
     };
 
     const submitButton = document.querySelector('.submit-button');
