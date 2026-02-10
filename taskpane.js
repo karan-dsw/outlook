@@ -175,15 +175,19 @@ async function triggerFlowAndLoadForm() {
             }
         );
 
-        // Step 4: Populate form with extracted data
+        // Step 4: Show form first, then populate
         loadingText.textContent = 'Loading form...';
         loadingSubtext.textContent = 'Preparing your insurance policy information';
 
-        populateForm(extractedData);
-
-        // Show form, hide loading
+        // Show form before populating (elements must be visible to access)
         loadingContainer.style.display = 'none';
         formContainer.style.display = 'block';
+
+        // Small delay to ensure DOM is fully rendered
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Now populate the form
+        populateForm(extractedData);
 
     } catch (error) {
         console.error('Error:', error);
@@ -217,10 +221,23 @@ function populateForm(extractedData) {
     console.log("Populating form with data:", data);
 
     // Populate form fields - only the 5 required fields
-    if (data.policy_number) document.getElementById('policyNumber').value = data.policy_number;
-    if (data.document_name) document.getElementById('documentName').value = data.document_name;
-    if (data.subject) document.getElementById('subjectName').value = data.subject;
-    if (data.comments) document.getElementById('comments').value = data.comments;
+    const policyNumberEl = document.getElementById('policyNumber');
+    const documentNameEl = document.getElementById('documentName');
+    const subjectNameEl = document.getElementById('subjectName');
+    const commentsEl = document.getElementById('comments');
+
+    // Debug logging
+    console.log('Form elements found:', {
+        policyNumber: !!policyNumberEl,
+        documentName: !!documentNameEl,
+        subjectName: !!subjectNameEl,
+        comments: !!commentsEl
+    });
+
+    if (policyNumberEl && data.policy_number) policyNumberEl.value = data.policy_number;
+    if (documentNameEl && data.document_name) documentNameEl.value = data.document_name;
+    if (subjectNameEl && data.subject) subjectNameEl.value = data.subject;
+    if (commentsEl && data.comments) commentsEl.value = data.comments;
 
     // Commented out old fields
     // if (data.broker_email) document.getElementById('brokerEmail').value = data.broker_email;
@@ -233,30 +250,32 @@ function populateForm(extractedData) {
 
     // Set timestamp
     const timestampField = document.getElementById('timestamp');
-    if (data.timestamp) {
-        // Use timestamp from backend if available
-        timestampField.value = data.timestamp;
-    } else if (extractedData.detected_at) {
-        // Format detected_at timestamp (remove seconds)
-        const detectedDate = new Date(extractedData.detected_at);
-        timestampField.value = detectedDate.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-    } else {
-        const now = new Date();
-        timestampField.value = now.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
+    if (timestampField) {
+        if (data.timestamp) {
+            // Use timestamp from backend if available
+            timestampField.value = data.timestamp;
+        } else if (extractedData.detected_at) {
+            // Format detected_at timestamp (remove seconds)
+            const detectedDate = new Date(extractedData.detected_at);
+            timestampField.value = detectedDate.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        } else {
+            const now = new Date();
+            timestampField.value = now.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
     }
 }
 
