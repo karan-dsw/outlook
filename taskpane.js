@@ -553,7 +553,7 @@ async function handleFormSubmit(e) {
     const formData = {
         policy_number: document.getElementById('policyNumber').value,
         document_name: document.getElementById('documentName').value,
-        subject: document.getElementById('subjectName').value,
+        // subject: document.getElementById('subjectName').value,
         comments: document.getElementById('comments').value,
         timestamp: document.getElementById('timestamp').value
         // Commented out old fields
