@@ -150,6 +150,7 @@
             background: white;
             transition: all 0.2s ease;
             outline: none;
+            resize: vertical;
         }
 
         .form-input:hover {
@@ -165,6 +166,11 @@
             background: #f3f2f1;
             color: #605e5c;
             cursor: not-allowed;
+        }
+
+        textarea.form-input {
+            min-height: 100px;
+            resize: vertical;
         }
 
         .input-hint {
@@ -278,7 +284,7 @@
                     ✓ Form submitted successfully!
                 </div>
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="brokerEmail">
                         Broker Email <span class="required">*</span>
                     </label>
@@ -290,9 +296,9 @@
                         placeholder="broker@example.com"
                         required
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="brokerName">
                         Broker Name <span class="required">*</span>
                     </label>
@@ -304,9 +310,9 @@
                         placeholder="Enter broker name"
                         required
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="underwriterEmail">
                         Underwriter Email <span class="required">*</span>
                     </label>
@@ -318,9 +324,9 @@
                         placeholder="underwriter@example.com"
                         required
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="underwriterName">
                         Underwriter Name <span class="required">*</span>
                     </label>
@@ -332,7 +338,7 @@
                         placeholder="Enter underwriter name"
                         required
                     >
-                </div>
+                </div> -->
 
                 <div class="form-section">
                     <label class="form-label" for="policyNumber">
@@ -349,6 +355,48 @@
                 </div>
 
                 <div class="form-section">
+                    <label class="form-label" for="documentName">
+                        Document Name <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="documentName" 
+                        name="documentName" 
+                        class="form-input" 
+                        placeholder="Enter document name"
+                        required
+                    >
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label" for="subjectName">
+                        Subject  <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="subjectName" 
+                        name="subjectName" 
+                        class="form-input" 
+                        placeholder="Enter subject "
+                        required
+                    >
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label" for="comments">
+                        Comments <span class="required">*</span>
+                    </label>
+                    <textarea 
+                        id="comments" 
+                        name="comments" 
+                        class="form-input" 
+                        placeholder="Enter comments"
+                        rows="4"
+                        required
+                    ></textarea>
+                </div>
+
+                <!-- <div class="form-section">
                     <label class="form-label" for="agencyName">
                         Broker Agency Name <span class="required">*</span>
                     </label>
@@ -360,9 +408,9 @@
                         placeholder="Enter agency name"
                         required
                     >
-                </div>
+                </div> -->
 
-                <div class="form-section">
+                <!-- <div class="form-section">
                     <label class="form-label" for="agencyId">
                         Broker/Agency ID <span class="required">*</span>
                     </label>
@@ -374,7 +422,7 @@
                         placeholder="Enter broker or agency ID"
                         required
                     >
-                </div>
+                </div> -->
 
                 <div class="form-section">
                     <label class="form-label" for="timestamp">
@@ -410,13 +458,16 @@
             filename = params.get('filename') || '';
             
             return {
-                brokerEmail: params.get('brokerEmail') || '',
-                brokerName: params.get('brokerName') || '',
-                underwriterEmail: params.get('underwriterEmail') || '',
-                underwriterName: params.get('underwriterName') || '',
+                // brokerEmail: params.get('brokerEmail') || '',
+                // brokerName: params.get('brokerName') || '',
+                // underwriterEmail: params.get('underwriterEmail') || '',
+                // underwriterName: params.get('underwriterName') || '',
                 policyNumber: params.get('policyNumber') || '',
-                agencyName: params.get('agencyName') || '',
-                agencyId: params.get('agencyId') || '',
+                documentName: params.get('documentName') || '',
+                subjectName: params.get('subjectName') || '',
+                comments: params.get('comments') || '',
+                // agencyName: params.get('agencyName') || '',
+                // agencyId: params.get('agencyId') || '',
                 timestamp: params.get('timestamp') || ''
             };
         }
@@ -426,13 +477,16 @@
             const params = getUrlParams();
             
             // Prefill all fields
-            document.getElementById('brokerEmail').value = params.brokerEmail;
-            document.getElementById('brokerName').value = params.brokerName;
-            document.getElementById('underwriterEmail').value = params.underwriterEmail;
-            document.getElementById('underwriterName').value = params.underwriterName;
+            // document.getElementById('brokerEmail').value = params.brokerEmail;
+            // document.getElementById('brokerName').value = params.brokerName;
+            // document.getElementById('underwriterEmail').value = params.underwriterEmail;
+            // document.getElementById('underwriterName').value = params.underwriterName;
             document.getElementById('policyNumber').value = params.policyNumber;
-            document.getElementById('agencyName').value = params.agencyName;
-            document.getElementById('agencyId').value = params.agencyId;
+            document.getElementById('documentName').value = params.documentName;
+            document.getElementById('subjectName').value = params.subjectName;
+            document.getElementById('comments').value = params.comments;
+            // document.getElementById('agencyName').value = params.agencyName;
+            // document.getElementById('agencyId').value = params.agencyId;
             
             // Set timestamp - use provided or generate new one
             const timestampField = document.getElementById('timestamp');
@@ -458,13 +512,16 @@
             
             // Get form data
             const formData = {
-                broker_email: document.getElementById('brokerEmail').value,
-                broker_name: document.getElementById('brokerName').value,
-                underwriter_email: document.getElementById('underwriterEmail').value,
-                underwriter_name: document.getElementById('underwriterName').value,
+                // broker_email: document.getElementById('brokerEmail').value,
+                // broker_name: document.getElementById('brokerName').value,
+                // underwriter_email: document.getElementById('underwriterEmail').value,
+                // underwriter_name: document.getElementById('underwriterName').value,
                 policy_number: document.getElementById('policyNumber').value,
-                broker_agency_name: document.getElementById('agencyName').value,
-                broker_agency_id: document.getElementById('agencyId').value,
+                document_name: document.getElementById('documentName').value,
+                subject_name: document.getElementById('subjectName').value,
+                comments: document.getElementById('comments').value,
+                // broker_agency_name: document.getElementById('agencyName').value,
+                // broker_agency_id: document.getElementById('agencyId').value,
                 timestamp: document.getElementById('timestamp').value
             };
             
