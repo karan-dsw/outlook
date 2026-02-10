@@ -220,21 +220,21 @@ function populateForm(extractedData) {
 
     // Populate form fields - only the 5 required fields
     const policyNumberEl = document.getElementById('policyNumber');
-    const documentNameEl = document.getElementById('documentName');
-    const subjectNameEl = document.getElementById('subjectName');
+    const documentNameEl = document.getElementById('subjectName');
+    // const subjectNameEl = document.getElementById('subjectName');
     const commentsEl = document.getElementById('comments');
 
     // Debug logging
     console.log('Form elements found:', {
         policyNumber: !!policyNumberEl,
         documentName: !!documentNameEl,
-        subjectName: !!subjectNameEl,
+        // subjectName: !!subjectNameEl,
         comments: !!commentsEl
     });
 
     if (policyNumberEl && data.policy_number) policyNumberEl.value = data.policy_number;
-    if (documentNameEl && data.document_name) documentNameEl.value = data.document_name;
-    if (subjectNameEl && data.subject) subjectNameEl.value = data.subject;
+    if (documentNameEl && data.subject) documentNameEl.value = data.subject;
+    // if (subjectNameEl && data.subject) subjectNameEl.value = data.subject;
     if (commentsEl && data.comments) commentsEl.value = data.comments;
 
     // Commented out old fields
