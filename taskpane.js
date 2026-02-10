@@ -470,9 +470,10 @@ async function generateFormPDF(formData) {
         // Add form fields - only the 5 required fields
         const fields = [
             { label: "Policy Number", value: formData.policy_number },
-            { label: "Document Name", value: formData.document_name },
-            { label: "Subject Name", value: formData.subject },
-            { label: "Comments", value: formData.comments, multiline: true },
+            { label: "Document Name", value: formData.subject },
+            // { label: "Document Name", value: formData.document_name },
+            // { label: "Subject Name", value: formData.subject },
+            { label: "Comments", value: formData.comments, multiline: false },
             { label: "Timestamp", value: formData.timestamp }
             // Commented out old fields
             // { label: "Sender's Email", value: formData.broker_email },
