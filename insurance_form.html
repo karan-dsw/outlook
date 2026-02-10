@@ -532,9 +532,9 @@
                 submitButton.disabled = true;
                 submitButton.textContent = 'Submitting...';
                 
-                // Step 3: Confirm email fields
-                console.log('Step 3: Confirming email fields...');
-                const confirmResponse = await fetch('https://corinne-unstudded-uneugenically.ngrok-free.dev/api/email-fields', {
+                // Step 1: Process the file with email fields (combined request)
+                console.log('Processing file with email fields...');
+                const processResponse = await fetch('https://corinne-unstudded-uneugenically.ngrok-free.dev/api/process', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -543,27 +543,6 @@
                     body: JSON.stringify({
                         filename: filename,
                         email_fields: formData
-                    })
-                });
-                
-                if (!confirmResponse.ok) {
-                    throw new Error(`Email fields confirmation failed: ${confirmResponse.status}`);
-                }
-                
-                console.log('Email fields confirmed successfully');
-                
-                // Step 4: Process the file
-                console.log('Step 4: Processing file...');
-                submitButton.textContent = 'Processing...';
-                
-                const processResponse = await fetch('https://corinne-unstudded-uneugenically.ngrok-free.dev/api/process', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'ngrok-skip-browser-warning': 'true'
-                    },
-                    body: JSON.stringify({
-                        filename: filename
                     })
                 });
                 
@@ -579,8 +558,8 @@
                 successMessage.classList.add('show');
                 submitButton.textContent = 'Generating Report...';
                 
-                // ===== STEP 5: Poll output-pdf API until report is ready =====
-                console.log('Step 5: Waiting for PDF report...');
+                // ===== STEP 2: Poll output-pdf API until report is ready =====
+                console.log('Waiting for PDF report...');
                 let pdfReady = false;
                 let pdfPollingAttempts = 0;
                 const maxPdfPollingAttempts = 60; // Max 5 minutes

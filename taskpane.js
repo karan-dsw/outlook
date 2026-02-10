@@ -575,12 +575,12 @@ async function handleFormSubmit(e) {
 
         submitButton.textContent = 'Submitting...';
 
-        // Step 3: Confirm email fields with PDF
-        console.log('Confirming email fields...');
+        // Combined request: Process file with email fields and PDF
+        console.log('Processing file with email fields...');
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
         const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
 
-        const confirmResponse = await fetch(`${apiBaseURL}${apiPrefix}/email-fields`, {
+        const processResponse = await fetch(`${apiBaseURL}${apiPrefix}/process`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -590,27 +590,6 @@ async function handleFormSubmit(e) {
                 filename: filename,
                 email_fields: formData,
                 form_pdf: pdfBase64  // Include the PDF in base64 format
-            })
-        });
-
-        if (!confirmResponse.ok) {
-            throw new Error(`Email fields confirmation failed: ${confirmResponse.status}`);
-        }
-
-        console.log('Email fields confirmed');
-
-        // Step 4: Process the file
-        console.log('Processing file...');
-        submitButton.textContent = 'Processing...';
-
-        const processResponse = await fetch(`${apiBaseURL}${apiPrefix}/process`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            },
-            body: JSON.stringify({
-                filename: filename
             })
         });
 
