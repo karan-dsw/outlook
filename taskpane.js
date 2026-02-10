@@ -220,7 +220,7 @@ function populateForm(extractedData) {
 
     // Populate form fields - only the 5 required fields
     const policyNumberEl = document.getElementById('policyNumber');
-    const documentNameEl = document.getElementById('subjectName');
+    const documentNameEl = document.getElementById('documentName');
     // const subjectNameEl = document.getElementById('subjectName');
     const commentsEl = document.getElementById('comments');
 
@@ -233,6 +233,7 @@ function populateForm(extractedData) {
     });
 
     if (policyNumberEl && data.policy_number) policyNumberEl.value = data.policy_number;
+    // Populate Document Name field with email subject
     if (documentNameEl && data.subject) documentNameEl.value = data.subject;
     // if (subjectNameEl && data.subject) subjectNameEl.value = data.subject;
     if (commentsEl && data.comments) commentsEl.value = data.comments;
