@@ -1,6 +1,6 @@
 // API URL Configuration
-// const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
-const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5001';
+const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
+// const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5001';
 const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
 
 let mailboxItem = null;
