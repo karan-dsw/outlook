@@ -1,6 +1,6 @@
 // API URL Configuration
- const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
-//const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
+//  const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
+const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
 const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
 
 let mailboxItem = null;
@@ -41,7 +41,7 @@ function detectProcessingTypeFromAttachments(attachments) {
 // Function to extract form fields directly from email data
 function extractFormFieldsFromEmail(emailData) {
     console.log('Extracting form fields from email data...');
-    
+
     const formFields = {
         policy_number: '',
         document_name: '',
@@ -129,9 +129,9 @@ async function triggerFlowAndLoadForm() {
         // Step 2: Extract form fields from email data immediately
         loadingText.textContent = 'Extracting form data...';
         loadingSubtext.textContent = 'Parsing email content';
-        
+
         const formFields = extractFormFieldsFromEmail(emailData);
-        
+
         // Prepare extracted data object
         extractedData = {
             filename: formFields.document_name,
