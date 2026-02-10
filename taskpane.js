@@ -1,6 +1,6 @@
 // API URL Configuration
 // const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
-const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
+const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5001';
 const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
 
 let mailboxItem = null;
@@ -221,7 +221,7 @@ function populateForm(extractedData) {
     if (data.document_name) document.getElementById('documentName').value = data.document_name;
     if (data.subject) document.getElementById('subjectName').value = data.subject;
     if (data.comments) document.getElementById('comments').value = data.comments;
-    
+
     // Commented out old fields
     // if (data.broker_email) document.getElementById('brokerEmail').value = data.broker_email;
     // if (data.broker_name) document.getElementById('brokerName').value = data.broker_name;
