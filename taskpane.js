@@ -1,7 +1,8 @@
 // API URL Configuration
 //  const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
 const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
-const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
+const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
+// const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
 
 let mailboxItem = null;
 let filename = '';
@@ -630,7 +631,7 @@ async function handleFormSubmit(e) {
                     // Prepare URLs
                     const reportUrl = pdfData.pdf_url;
                     const sessionID = extractedData ? (extractedData.session_id || extractedData._session_id) : '';
-                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-new?session_id=${sessionID}`;
+                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-center`;
                     const claimsUrl = `${CLAIMS_API_URL}/claims`;
 
                     console.log('Opening report:', reportUrl);
