@@ -209,6 +209,45 @@ async function triggerFlowAndLoadForm() {
     }
 }
 
+async function waitForSessionReady(filename, apiBaseURL, apiPrefix, maxAttempts = 30) {
+    console.log(`Waiting for session to be ready for: ${filename}`);
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+            const response = await fetch(`${apiBaseURL}${apiPrefix}/sessions`, {
+                headers: {
+                    'ngrok-skip-browser-warning': 'true',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Check if any session has this filename with extracted data
+                const matchingSession = data.sessions?.find(s =>
+                    s.filename === filename && s.has_extracted_data
+                );
+
+                if (matchingSession) {
+                    console.log(`✓ Session ready: ${matchingSession.session_id}`);
+                    return matchingSession.session_id;
+                }
+            }
+
+            console.log(`Attempt ${attempt + 1}/${maxAttempts}: Session not ready yet...`);
+
+        } catch (error) {
+            console.warn(`Session check attempt ${attempt + 1} failed:`, error.message);
+        }
+
+        // Wait 2 seconds before next attempt
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    throw new Error('Timeout waiting for file to be processed by backend');
+}
+
 function populateForm(extractedData) {
     // Store filename for later submission
     filename = extractedData.filename || '';
@@ -548,23 +587,187 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
+// async function handleFormSubmit(e) {
+//     e.preventDefault();
+
+//     const formData = {
+//         policy_number: document.getElementById('policyNumber').value,
+//         document_name: document.getElementById('documentName').value,
+//         // subject: document.getElementById('subjectName').value,
+//         comments: document.getElementById('comments').value,
+//         timestamp: document.getElementById('timestamp').value
+//         // Commented out old fields
+//         // broker_email: document.getElementById('brokerEmail').value,
+//         // broker_name: document.getElementById('brokerName').value,
+//         // underwriter_email: document.getElementById('underwriterEmail').value,
+//         // underwriter_name: document.getElementById('underwriterName').value,
+//         // broker_agency_name: document.getElementById('agencyName').value,
+//         // broker_agency_id: document.getElementById('agencyId').value,
+//         // email_summary: document.getElementById('emailSummary').value,
+//     };
+
+//     const submitButton = document.querySelector('.submit-button');
+//     const successMessage = document.getElementById('successMessage');
+
+//     try {
+//         submitButton.disabled = true;
+//         submitButton.textContent = 'Generating PDF...';
+
+//         // Generate PDF from form data
+//         const pdfBase64 = await generateFormPDF(formData);
+//         console.log('PDF generated successfully');
+
+//         submitButton.textContent = 'Submitting...';
+
+//         // Combined request: Process file with email fields and PDF
+//         console.log('Processing file with email fields...');
+//         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
+//         const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
+
+//         const processResponse = await fetch(`${apiBaseURL}${apiPrefix}/process`, {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//                 'ngrok-skip-browser-warning': 'true'
+//             },
+//             body: JSON.stringify({
+//                 filename: filename,
+//                 email_fields: formData,
+//                 form_pdf: pdfBase64  // Include the PDF in base64 format
+//             })
+//         });
+
+//         if (!processResponse.ok) {
+//             throw new Error(`Processing failed: ${processResponse.status}`);
+//         }
+
+//         const result = await processResponse.json();
+//         console.log('Processing successful:', result);
+
+//         successMessage.textContent = '✓ Form submitted successfully! Generating report...';
+//         successMessage.classList.add('show');
+//         submitButton.textContent = 'Generating Report...';
+
+//         // Step 5: Poll for PDF report - start immediately with shorter interval
+//         console.log('Waiting for PDF report...');
+//         let pdfReady = false;
+//         let pdfPollingAttempts = 0;
+//         const maxPdfPollingAttempts = 60; // 2 minutes max (60 attempts * 2 seconds)
+
+//         while (pdfPollingAttempts < maxPdfPollingAttempts && !pdfReady) {
+//             try {
+//                 const pdfResponse = await fetch(`${apiBaseURL}${apiPrefix}/output-pdf`, {
+//                     headers: {
+//                         'ngrok-skip-browser-warning': 'true',
+//                         'Accept': 'application/json'
+//                     }
+//                 });
+
+//                 if (pdfResponse.status === 200) {
+//                     const pdfData = await pdfResponse.json();
+//                     console.log('PDF is ready!', pdfData);
+
+//                     // Prepare URLs
+//                     const reportUrl = pdfData.pdf_url;
+//                     const sessionID = extractedData ? (extractedData.session_id || extractedData._session_id) : '';
+//                     const underwritingUrl = `${UNDERWRITING_API_URL}/policy-center`;
+//                     const claimsUrl = `${CLAIMS_API_URL}/claims`;
+
+//                     console.log('Opening report:', reportUrl);
+//                     try {
+//                         window.open(reportUrl, '_blank', 'noopener,noreferrer');
+//                     } catch (e) {
+//                         console.error('Error opening report:', e);
+//                     }
+
+//                     // Update success message with fallback links
+//                     let successHtml = `✓ Email processed successfully!<br><br>`;
+//                     successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold; display: block; margin-bottom: 12px;">📂 Open Processed Report</a>`;
+
+//                     if (processingType === 'claims') {
+//                         successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0b7815; text-decoration: underline; font-weight: bold; display: block;">📋 Open Claims Management</a>`;
+
+//                         // Also try automatic open for claims
+//                         setTimeout(() => {
+//                             try { window.open(claimsUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
+//                         }, 2000);
+//                     } else if (processingType === 'underwriting') {
+//                         successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0b7815; text-decoration: underline; font-weight: bold; display: block;">📝 Create New Policy</a>`;
+
+//                         // Also try automatic open for underwriting
+//                         setTimeout(() => {
+//                             try { window.open(underwritingUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
+//                         }, 2000);
+//                     }
+
+//                     successMessage.innerHTML = successHtml;
+//                     successMessage.classList.add('show');
+//                     pdfReady = true;
+//                     break;
+//                 } else {
+//                     console.log('Waiting for PDF report...');
+//                 }
+//             } catch (pollError) {
+//                 console.warn('PDF polling attempt failed:', pollError.message);
+//             }
+
+//             await new Promise(resolve => setTimeout(resolve, 2000));
+//             pdfPollingAttempts++;
+//         }
+
+//         if (!pdfReady) {
+//             successMessage.textContent = '✓ Email processed successfully! Report is still processing...';
+//         }
+
+//         // Show persistent notification in email view
+//         Office.context.mailbox.item.notificationMessages.addAsync(
+//             "processSuccess",
+//             {
+//                 type: "informationalMessage",
+//                 message: "Email processed successfully! ✓",
+//                 icon: "Icon.80x80",
+//                 persistent: true
+//             }
+//         );
+
+//         // Keep button as "Processed" and disabled permanently
+//         submitButton.textContent = 'Processed';
+//         submitButton.disabled = true;
+
+//         // Close the taskpane after showing success notification
+//         setTimeout(() => {
+//             console.log('Closing taskpane...');
+//             Office.context.ui.closeContainer();
+//         }, 2000);
+
+//     } catch (error) {
+//         console.error('Error submitting form:', error);
+
+//         successMessage.textContent = '✗ Submission failed: ' + error.message;
+//         successMessage.style.background = '#fde7e9';
+//         successMessage.style.color = '#a80000';
+//         successMessage.style.borderLeft = '4px solid #a80000';
+//         successMessage.classList.add('show');
+
+//         submitButton.disabled = false;
+//         submitButton.textContent = 'Submit';
+
+//         setTimeout(() => {
+//             successMessage.classList.remove('show');
+//             successMessage.style.background = '#dff6dd';
+//             successMessage.style.color = '#0b7815';
+//             successMessage.style.borderLeft = '4px solid #0b7815';
+//         }, 5000);
+//     }
+// }
 async function handleFormSubmit(e) {
     e.preventDefault();
 
     const formData = {
         policy_number: document.getElementById('policyNumber').value,
         document_name: document.getElementById('documentName').value,
-        // subject: document.getElementById('subjectName').value,
         comments: document.getElementById('comments').value,
         timestamp: document.getElementById('timestamp').value
-        // Commented out old fields
-        // broker_email: document.getElementById('brokerEmail').value,
-        // broker_name: document.getElementById('brokerName').value,
-        // underwriter_email: document.getElementById('underwriterEmail').value,
-        // underwriter_name: document.getElementById('underwriterName').value,
-        // broker_agency_name: document.getElementById('agencyName').value,
-        // broker_agency_id: document.getElementById('agencyId').value,
-        // email_summary: document.getElementById('emailSummary').value,
     };
 
     const submitButton = document.querySelector('.submit-button');
@@ -578,12 +781,37 @@ async function handleFormSubmit(e) {
         const pdfBase64 = await generateFormPDF(formData);
         console.log('PDF generated successfully');
 
-        submitButton.textContent = 'Submitting...';
-
-        // Combined request: Process file with email fields and PDF
-        console.log('Processing file with email fields...');
+        // Determine API endpoints
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
         const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
+
+        // CRITICAL: Wait for backend session to be ready
+        submitButton.textContent = 'Waiting for file processing...';
+        console.log('Waiting for backend to process file...');
+
+        let sessionId = null;
+        try {
+            sessionId = await waitForSessionReady(filename, apiBaseURL, apiPrefix);
+            console.log(`Session is ready: ${sessionId}`);
+        } catch (waitError) {
+            console.warn('Session wait timeout - proceeding anyway:', waitError.message);
+            // Continue without session_id - backend will handle pending data
+        }
+
+        // Now submit the form with session ID if available
+        submitButton.textContent = 'Submitting...';
+        console.log('Processing file with email fields...');
+
+        const processPayload = {
+            filename: filename,
+            email_fields: formData,
+            form_pdf: pdfBase64
+        };
+
+        // Add session_id if we found one
+        if (sessionId) {
+            processPayload.session_id = sessionId;
+        }
 
         const processResponse = await fetch(`${apiBaseURL}${apiPrefix}/process`, {
             method: 'POST',
@@ -591,11 +819,7 @@ async function handleFormSubmit(e) {
                 'Content-Type': 'application/json',
                 'ngrok-skip-browser-warning': 'true'
             },
-            body: JSON.stringify({
-                filename: filename,
-                email_fields: formData,
-                form_pdf: pdfBase64  // Include the PDF in base64 format
-            })
+            body: JSON.stringify(processPayload)
         });
 
         if (!processResponse.ok) {
