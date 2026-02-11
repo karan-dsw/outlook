@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,8 +41,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .loading-text {
@@ -69,8 +75,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .header {
@@ -192,7 +205,7 @@
         }
 
         .submit-section {
-            padding: 0px 20px 15px 20px;
+            padding: 15px 20px 15px 20px;
             background: #faf9f8;
             border-top: 1px solid #edebe9;
             display: flex;
@@ -250,6 +263,7 @@
                 opacity: 0;
                 transform: translateY(-10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -312,6 +326,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Loading State -->
     <div id="loadingContainer">
@@ -398,28 +413,16 @@
                     <label class="form-label" for="policyNumber">
                         Policy Number <span class="required">*</span>
                     </label>
-                    <input 
-                        type="text" 
-                        id="policyNumber" 
-                        name="policyNumber" 
-                        class="form-input" 
-                        placeholder="Enter policy number"
-                        required
-                    >
+                    <input type="text" id="policyNumber" name="policyNumber" class="form-input"
+                        placeholder="Enter policy number" required>
                 </div>
 
                 <div class="form-section">
                     <label class="form-label" for="documentName">
                         Document Name <span class="required">*</span>
                     </label>
-                    <input 
-                        type="text" 
-                        id="documentName" 
-                        name="documentName" 
-                        class="form-input" 
-                        placeholder="Enter document name"
-                        required
-                    >
+                    <input type="text" id="documentName" name="documentName" class="form-input"
+                        placeholder="Enter document name" required>
                 </div>
 
                 <!-- <div class="form-section">
@@ -440,13 +443,8 @@
                     <label class="form-label" for="comments">
                         Comments
                     </label>
-                    <textarea 
-                        id="comments" 
-                        name="comments" 
-                        class="form-input" 
-                        rows="1"
-                        placeholder="Enter comments"
-                    ></textarea>
+                    <textarea id="comments" name="comments" class="form-input" rows="1"
+                        placeholder="Enter comments"></textarea>
                 </div>
 
                 <!-- <div class="form-section">
@@ -492,14 +490,7 @@
                     <label class="form-label" for="timestamp">
                         Timestamp <span class="required">*</span>
                     </label>
-                    <input 
-                        type="text" 
-                        id="timestamp" 
-                        name="timestamp" 
-                        class="form-input" 
-                        disabled
-                        readonly
-                    >
+                    <input type="text" id="timestamp" name="timestamp" class="form-input" disabled readonly>
                     <p class="input-hint">Auto-generated timestamp</p>
                 </div>
             </div>
@@ -512,4 +503,5 @@
 
     <script src="taskpane.js"></script>
 </body>
+
 </html>
