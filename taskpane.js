@@ -9,6 +9,7 @@ let filename = '';
 let processingType = ''; // 'claims' or 'underwriting'
 let extractedData = null; // Store extracted data globally
 
+
 Office.onReady((info) => {
     if (info.host === Office.HostType.Outlook) {
         mailboxItem = Office.context.mailbox.item;
