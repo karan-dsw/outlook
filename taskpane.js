@@ -632,15 +632,11 @@ async function handleFormSubmit(e) {
                     // Prepare URLs
                     const reportUrl = pdfData.pdf_url;
                     const sessionID = extractedData ? (extractedData.session_id || extractedData._session_id) : '';
-                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
+                    // const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
+                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-center`;
                     const claimsUrl = `${CLAIMS_API_URL}/claims`;
 
-                    console.log('Opening report:', reportUrl);
-                    try {
-                        window.open(reportUrl, '_blank', 'noopener,noreferrer');
-                    } catch (e) {
-                        console.error('Error opening report:', e);
-                    }
+
 
                     // Update success message with fallback links
                     let successHtml = `✓ Email processed successfully!<br><br>`;
@@ -660,6 +656,13 @@ async function handleFormSubmit(e) {
                         setTimeout(() => {
                             try { window.open(underwritingUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
                         }, 2000);
+                    }
+
+                    console.log('Opening report:', reportUrl);
+                    try {
+                        window.open(reportUrl, '_blank', 'noopener,noreferrer');
+                    } catch (e) {
+                        console.error('Error opening report:', e);
                     }
 
                     successMessage.innerHTML = successHtml;
