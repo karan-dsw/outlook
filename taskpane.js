@@ -632,7 +632,7 @@ async function handleFormSubmit(e) {
                     // Prepare URLs
                     const reportUrl = pdfData.pdf_url;
                     const sessionID = extractedData ? (extractedData.session_id || extractedData._session_id) : '';
-                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-center`;
+                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
                     const claimsUrl = `${CLAIMS_API_URL}/claims`;
 
                     console.log('Opening report:', reportUrl);
