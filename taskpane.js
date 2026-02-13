@@ -202,7 +202,7 @@ async function triggerFlowAndLoadForm() {
             "error",
             {
                 type: "errorMessage",
-                message: "Processing failed: " + error.message
+                message: "Saving failed: " + error.message
             }
         );
 
@@ -641,11 +641,11 @@ async function handleFormSubmit(e) {
 
 
                     // Update success message with professional styling (no emojis)
-                    let successHtml = `<strong>Email processed successfully!</strong><br><br>`;
-                    successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; margin-bottom: 10px; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Processed Report</a>`;
+                    let successHtml = `<strong>Email saved successfully!</strong><br><br>`;
+                    successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; margin-bottom: 10px; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Saved Data</a>`;
 
                     if (processingType === 'claims') {
-                        successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Management</a>`;
+                        successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Center</a>`;
 
                         // Also try automatic open for claims
                         // setTimeout(() => {
@@ -718,7 +718,7 @@ async function handleFormSubmit(e) {
         }
 
         if (!pdfReady) {
-            successMessage.textContent = 'Email processed successfully! Report is still processing...';
+            successMessage.textContent = 'Email saved successfully! Report is being created...';
         }
 
         // Clear all previous notifications first to prevent duplicates
@@ -731,7 +731,7 @@ async function handleFormSubmit(e) {
             "processComplete",  // Use a unique ID for the final notification
             {
                 type: "informationalMessage",
-                message: "Email processed successfully!",
+                message: "Email saved successfully!",
                 icon: "Icon.80x80",
                 persistent: true
             }

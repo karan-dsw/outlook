@@ -160,7 +160,7 @@
                 "error",
                 {
                     type: "errorMessage",
-                    message: "Processing failed: " + error.message
+                    message: "Saving failed: " + error.message
                 }
             );
         } finally {
@@ -302,7 +302,7 @@
         const results = [];
 
         for (const att of item.attachments) {
-            console.log(`Processing attachment: ${att.name}, ID: ${att.id}`);
+            console.log(`Saving attachment: ${att.name}, ID: ${att.id}`);
             
             try {
                 await new Promise(resolve => {
