@@ -709,7 +709,7 @@ async function handleFormSubmit(e) {
     } catch (error) {
         console.error('Error submitting form:', error);
 
-        successMessage.textContent = '✗ Submission failed: ' + error.message;
+        successMessage.textContent = 'Submission failed: ' + error.message;
         successMessage.style.background = '#fde7e9';
         successMessage.style.color = '#a80000';
         successMessage.style.borderLeft = '4px solid #a80000';
