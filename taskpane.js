@@ -661,11 +661,22 @@ async function handleFormSubmit(e) {
                     }
 
                     console.log('Opening report:', reportUrl);
-                    // try {
-                    //     window.open(reportUrl, '_blank', 'noopener,noreferrer');
-                    // } catch (e) {
-                    //     console.error('Error opening report:', e);
-                    // }
+                    // Open links in background tabs without switching to them
+                    try {
+                        window.open(reportUrl, '_blank', 'noopener,noreferrer');
+
+                        // Open the appropriate dashboard based on processing type
+                        if (processingType === 'claims') {
+                            window.open(claimsUrl, '_blank', 'noopener,noreferrer');
+                        } else if (processingType === 'underwriting') {
+                            window.open(underwritingUrl, '_blank', 'noopener,noreferrer');
+                        }
+
+                        // Immediately refocus the current window to prevent tab switching
+                        window.focus();
+                    } catch (e) {
+                        console.error('Error opening links:', e);
+                    }
 
                     successMessage.innerHTML = successHtml;
                     successMessage.classList.add('show');
