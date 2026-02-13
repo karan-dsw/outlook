@@ -648,24 +648,24 @@ async function handleFormSubmit(e) {
                         successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Management</a>`;
 
                         // Also try automatic open for claims
-                        setTimeout(() => {
-                            try { window.open(claimsUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
-                        }, 2000);
+                        // setTimeout(() => {
+                        //     try { window.open(claimsUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
+                        // }, 2000);
                     } else if (processingType === 'underwriting') {
                         successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Policy Center</a>`;
 
                         // Also try automatic open for underwriting
-                        setTimeout(() => {
-                            try { window.open(underwritingUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
-                        }, 2000);
+                        // setTimeout(() => {
+                        //     try { window.open(underwritingUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
+                        // }, 2000);
                     }
 
                     console.log('Opening report:', reportUrl);
-                    try {
-                        window.open(reportUrl, '_blank', 'noopener,noreferrer');
-                    } catch (e) {
-                        console.error('Error opening report:', e);
-                    }
+                    // try {
+                    //     window.open(reportUrl, '_blank', 'noopener,noreferrer');
+                    // } catch (e) {
+                    //     console.error('Error opening report:', e);
+                    // }
 
                     successMessage.innerHTML = successHtml;
                     successMessage.classList.add('show');
@@ -726,9 +726,9 @@ async function handleFormSubmit(e) {
 
         setTimeout(() => {
             successMessage.classList.remove('show');
-            successMessage.style.background = '#dff6dd';
-            successMessage.style.color = '#0b7815';
-            successMessage.style.borderLeft = '4px solid #0b7815';
+            successMessage.style.background = '#e8f4f8';
+            successMessage.style.color = '#005a9e';
+            successMessage.style.borderLeft = '4px solid #0078d4';
         }, 5000);
     }
 }
