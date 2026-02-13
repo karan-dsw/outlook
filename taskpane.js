@@ -163,6 +163,7 @@ async function triggerFlowAndLoadForm() {
         });
 
         Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+        Office.context.mailbox.item.notificationMessages.removeAsync("formSuccess"); // Clear any previous notifications
 
         // Show success notification
         Office.context.mailbox.item.notificationMessages.addAsync(
@@ -685,9 +686,14 @@ async function handleFormSubmit(e) {
             successMessage.textContent = 'Email processed successfully! Report is still processing...';
         }
 
-        // Update the existing notification in email view (replace instead of add)
-        Office.context.mailbox.item.notificationMessages.replaceAsync(
-            "formSuccess",  // Use the same ID to replace the previous notification
+        // Clear all previous notifications first to prevent duplicates
+        Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+        Office.context.mailbox.item.notificationMessages.removeAsync("formSuccess");
+        Office.context.mailbox.item.notificationMessages.removeAsync("processSuccess");
+
+        // Add the final success notification (only this one should show)
+        Office.context.mailbox.item.notificationMessages.addAsync(
+            "processComplete",  // Use a unique ID for the final notification
             {
                 type: "informationalMessage",
                 message: "Email processed successfully!",
