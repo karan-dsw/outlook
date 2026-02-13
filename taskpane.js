@@ -641,7 +641,7 @@ async function handleFormSubmit(e) {
 
 
                     // Update success message with professional styling (no emojis)
-                    let successHtml = `<strong>Policy Center updated!</strong><br><br>`;
+                    let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
                     // successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; margin-bottom: 10px; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Saved Data</a>`;
 
                     if (processingType === 'claims') {
