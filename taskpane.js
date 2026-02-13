@@ -685,9 +685,9 @@ async function handleFormSubmit(e) {
             successMessage.textContent = '✓ Email processed successfully! Report is still processing...';
         }
 
-        // Show persistent notification in email view
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "processSuccess",
+        // Update the existing notification in email view (replace instead of add)
+        Office.context.mailbox.item.notificationMessages.replaceAsync(
+            "formSuccess",  // Use the same ID to replace the previous notification
             {
                 type: "informationalMessage",
                 message: "Email processed successfully! ✓",
@@ -700,11 +700,11 @@ async function handleFormSubmit(e) {
         submitButton.textContent = 'Processed';
         submitButton.disabled = true;
 
-        // Close the taskpane after showing success notification
-        setTimeout(() => {
-            console.log('Closing taskpane...');
-            Office.context.ui.closeContainer();
-        }, 2000);
+        // Taskpane will remain open so user can see the success message and links
+        // setTimeout(() => {
+        //     console.log('Closing taskpane...');
+        //     Office.context.ui.closeContainer();
+        // }, 2000);
 
     } catch (error) {
         console.error('Error submitting form:', error);
