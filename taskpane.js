@@ -641,7 +641,7 @@ async function handleFormSubmit(e) {
 
 
                     // Update success message with professional styling (no emojis)
-                    let successHtml = `<strong>Email saved successfully!</strong><br><br>`;
+                    let successHtml = `<strong>This email's data has been saved in Policy Center.</strong><br><br>`;
                     successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; margin-bottom: 10px; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Saved Data</a>`;
 
                     if (processingType === 'claims') {
@@ -718,7 +718,7 @@ async function handleFormSubmit(e) {
         }
 
         if (!pdfReady) {
-            successMessage.textContent = 'Email saved successfully! Report is being created...';
+            successMessage.textContent = "This email's data has been saved in Policy Center. Report is being created...";
         }
 
         // Clear all previous notifications first to prevent duplicates
@@ -731,7 +731,7 @@ async function handleFormSubmit(e) {
             "processComplete",  // Use a unique ID for the final notification
             {
                 type: "informationalMessage",
-                message: "Email saved successfully!",
+                message: "This email's data has been saved in Policy Center.",
                 icon: "Icon.80x80",
                 persistent: true
             }
