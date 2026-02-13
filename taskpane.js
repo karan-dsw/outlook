@@ -607,7 +607,7 @@ async function handleFormSubmit(e) {
         const result = await processResponse.json();
         console.log('Processing successful:', result);
 
-        successMessage.textContent = '✓ Form submitted successfully! Generating report...';
+        successMessage.textContent = 'Form submitted successfully! Generating report...';
         successMessage.classList.add('show');
         submitButton.textContent = 'Generating Report...';
 
@@ -639,19 +639,19 @@ async function handleFormSubmit(e) {
 
 
 
-                    // Update success message with fallback links
-                    let successHtml = `✓ Email processed successfully!<br><br>`;
-                    successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: underline; font-weight: bold; display: block; margin-bottom: 12px;">📂 Open Processed Report</a>`;
+                    // Update success message with professional styling (no emojis)
+                    let successHtml = `<strong>Email processed successfully!</strong><br><br>`;
+                    successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; margin-bottom: 10px; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Processed Report</a>`;
 
                     if (processingType === 'claims') {
-                        successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0b7815; text-decoration: underline; font-weight: bold; display: block;">📋 Open Claims Management</a>`;
+                        successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Management</a>`;
 
                         // Also try automatic open for claims
                         setTimeout(() => {
                             try { window.open(claimsUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
                         }, 2000);
                     } else if (processingType === 'underwriting') {
-                        successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0b7815; text-decoration: underline; font-weight: bold; display: block;">📝 Create New Policy</a>`;
+                        successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Policy Center</a>`;
 
                         // Also try automatic open for underwriting
                         setTimeout(() => {
@@ -682,7 +682,7 @@ async function handleFormSubmit(e) {
         }
 
         if (!pdfReady) {
-            successMessage.textContent = '✓ Email processed successfully! Report is still processing...';
+            successMessage.textContent = 'Email processed successfully! Report is still processing...';
         }
 
         // Update the existing notification in email view (replace instead of add)
@@ -690,7 +690,7 @@ async function handleFormSubmit(e) {
             "formSuccess",  // Use the same ID to replace the previous notification
             {
                 type: "informationalMessage",
-                message: "Email processed successfully! ✓",
+                message: "Email processed successfully!",
                 icon: "Icon.80x80",
                 persistent: true
             }
