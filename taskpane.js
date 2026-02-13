@@ -661,22 +661,46 @@ async function handleFormSubmit(e) {
                     }
 
                     console.log('Opening report:', reportUrl);
-                    // Open links in background tabs without switching to them
+
+                    // Simulate Ctrl+Click to open tabs in background (without switching)
+                    function openInBackgroundTab(url) {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+
+                        // Simulate Ctrl+Click (Cmd+Click on Mac)
+                        const evt = new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            ctrlKey: true,  // This is the key to opening in background!
+                            metaKey: true   // For Mac users
+                        });
+
+                        a.dispatchEvent(evt);
+                        document.body.removeChild(a);
+                    }
+
                     try {
-                        window.open(reportUrl, '_blank', 'noopener,noreferrer');
+                        // Open report in background tab
+                        openInBackgroundTab(reportUrl);
 
-                        // Open the appropriate dashboard based on processing type
-                        if (processingType === 'claims') {
-                            window.open(claimsUrl, '_blank', 'noopener,noreferrer');
-                        } else if (processingType === 'underwriting') {
-                            window.open(underwritingUrl, '_blank', 'noopener,noreferrer');
-                        }
-
-                        // Immediately refocus the current window to prevent tab switching
-                        window.focus();
+                        // Small delay to ensure tabs open in order
+                        setTimeout(() => {
+                            // Open the appropriate dashboard based on processing type
+                            if (processingType === 'claims') {
+                                openInBackgroundTab(claimsUrl);
+                            } else if (processingType === 'underwriting') {
+                                openInBackgroundTab(underwritingUrl);
+                            }
+                        }, 100);
                     } catch (e) {
                         console.error('Error opening links:', e);
                     }
+
 
                     successMessage.innerHTML = successHtml;
                     successMessage.classList.add('show');
