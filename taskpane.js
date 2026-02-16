@@ -626,7 +626,7 @@ async function handleFormSubmit(e) {
 
         if (result.status === 'skipped') {
             console.log('File was skipped - not an ACORD form:', result.filename);
-            successMessage.textContent = 'Email saved successfully! (File uploaded to OneDrive)';
+            successMessage.textContent = 'Email analysis complete';
             successMessage.classList.add('show');
             submitButton.textContent = 'Complete';
             submitButton.disabled = false;
