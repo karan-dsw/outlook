@@ -597,6 +597,8 @@ async function handleFormSubmit(e) {
 
         // Combined request: Process file with email fields and PDF
         console.log('Processing file with email fields...');
+        console.log('Filename:', filename);
+        console.log('Form data:', formData);
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
         const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
 
