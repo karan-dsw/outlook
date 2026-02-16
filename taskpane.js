@@ -67,7 +67,14 @@ function extractFormFieldsFromEmail(emailData) {
             att.name && att.name.toLowerCase().startsWith('acord_')
         );
         let selectedAttachment = acordFile || emailData.attachments[0];
+        formFields.document_name = selectedAttachment.name || '';
         filename = selectedAttachment.name;
+        console.log(`Selected attachment for processing: ${filename}`);
+        if (acordFile) {
+            console.log('  ✓ ACORD file detected');
+        } else {
+            console.log('  ⚠ No ACORD file found, using first attachment');
+        }
     }
 
     // Use email subject as subject name
@@ -607,6 +614,8 @@ async function handleFormSubmit(e) {
         });
 
         if (!processResponse.ok) {
+            const errorText = await processResponse.text();
+            console.error('API Error Response:', errorText);
             throw new Error(`Processing failed: ${processResponse.status}`);
         }
 
