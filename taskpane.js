@@ -608,6 +608,23 @@ async function handleFormSubmit(e) {
         const result = await processResponse.json();
         console.log('Processing successful:', result);
 
+        if (result.status === 'skipped') {
+            console.log('File was skipped - not an ACORD form:', result.filename);
+            successMessage.textContent = 'Email saved successfully! (File uploaded to OneDrive)';
+            successMessage.classList.add('show');
+            submitButton.textContent = 'Complete';
+            submitButton.disabled = false;
+
+            // Show link to Policy Center
+            setTimeout(() => {
+                const underwritingUrl = `${UNDERWRITING_API_URL}/policy-center`;
+                successMessage.innerHTML = `<strong>Email saved to Policy Center successfully</strong><br><br>` +
+                    `<a href="${underwritingUrl}" target="_blank">Open Policy Center</a>`;
+            }, 1000);
+            
+            return; // Don't poll for PDF since none will be generated
+        }
+
         successMessage.textContent = 'Form submitted successfully! Generating report...';
         successMessage.classList.add('show');
         submitButton.textContent = 'Generating Report...';
