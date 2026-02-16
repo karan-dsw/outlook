@@ -61,8 +61,13 @@ function extractFormFieldsFromEmail(emailData) {
 
     // Extract document name from first attachment
     if (emailData.attachments && emailData.attachments.length > 0) {
-        formFields.document_name = emailData.attachments[0].name || '';
-        filename = emailData.attachments[0].name || '';
+        // formFields.document_name = emailData.attachments[0].name || '';
+        // filename = emailData.attachments[0].name || '';
+        let acordFile = emailData.attachments.find(att => 
+            att.name && att.name.toLowerCase().startsWith('acord_')
+        );
+        let selectedAttachment = acordFile || emailData.attachments[0];
+        filename = selectedAttachment.name;
     }
 
     // Use email subject as subject name
