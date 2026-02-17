@@ -1,8 +1,8 @@
 // API URL Configuration
 const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
 // const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
-// const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
-const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
+const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
+// const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
 
 let mailboxItem = null;
 let filename = '';
@@ -63,7 +63,7 @@ function extractFormFieldsFromEmail(emailData) {
     if (emailData.attachments && emailData.attachments.length > 0) {
         // formFields.document_name = emailData.attachments[0].name || '';
         // filename = emailData.attachments[0].name || '';
-        let acordFile = emailData.attachments.find(att => 
+        let acordFile = emailData.attachments.find(att =>
             att.name && att.name.toLowerCase().startsWith('acord_')
         );
         let selectedAttachment = acordFile || emailData.attachments[0];
@@ -637,7 +637,7 @@ async function handleFormSubmit(e) {
                 successMessage.innerHTML = `<strong>Email saved to Policy Center successfully</strong><br><br>` +
                     `<a href="${underwritingUrl}" target="_blank">Open Policy Center</a>`;
             }, 1000);
-            
+
             return; // Don't poll for PDF since none will be generated
         }
 
