@@ -153,9 +153,67 @@ async function triggerFlowAndLoadForm() {
             detected_at: emailData.receivedDateTime || new Date().toISOString()
         };
 
-        // Step 3: Power Automate flow bypassed - direct API submission instead
-        // (Flow trigger removed - data will be sent directly to backend in handleFormSubmit)
-        console.log('Power Automate flow bypassed - using direct API submission');
+        // Step 3: Send data directly to backend API immediately
+        loadingText.textContent = 'Processing email...';
+        loadingSubtext.textContent = 'Sending to backend for analysis';
+
+        console.log('Sending direct submission to backend...');
+
+        // Find the ACORD attachment
+        let primaryAttachment = null;
+        for (const att of emailData.attachments) {
+            if (att.name && att.name.toLowerCase().startsWith('acord_')) {
+                primaryAttachment = att;
+                break;
+            }
+        }
+
+        // Fallback to first attachment if no ACORD file found
+        if (!primaryAttachment && emailData.attachments.length > 0) {
+            primaryAttachment = emailData.attachments[0];
+        }
+
+        if (primaryAttachment) {
+            try {
+                const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
+                const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
+
+                const submitResponse = await fetch(`${apiBaseURL}${apiPrefix}/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({
+                        filename: primaryAttachment.name,
+                        attachment_base64: primaryAttachment.contentBytes,
+                        email_metadata: {
+                            subject: emailData.subject,
+                            from: emailData.from,
+                            receivedDateTime: emailData.receivedDateTime,
+                            body: emailData.body,
+                            userEmail: emailData.userEmail,
+                            triggeredAt: emailData.triggeredAt
+                        },
+                        email_fields: formFields
+                    })
+                });
+
+                if (submitResponse.ok) {
+                    const result = await submitResponse.json();
+                    console.log('✓ Backend processing started:', result);
+
+                    // Store session/processing info for later use
+                    extractedData.session_id = result.session_id;
+                    extractedData.processing_status = 'completed';
+                } else {
+                    console.warn('Backend submission failed:', submitResponse.status);
+                }
+            } catch (apiError) {
+                console.error('API submission error:', apiError);
+                // Continue anyway - show form even if API fails
+            }
+        }
 
         Office.context.mailbox.item.notificationMessages.removeAsync("progress");
         Office.context.mailbox.item.notificationMessages.removeAsync("formSuccess"); // Clear any previous notifications
@@ -165,9 +223,9 @@ async function triggerFlowAndLoadForm() {
             "formSuccess",
             {
                 type: "informationalMessage",
-                message: "Form data extracted! Opening form in taskpane...",
+                message: "Email processing complete! Data saved to Policy Center.",
                 icon: "Icon.80x80",
-                persistent: false
+                persistent: true
             }
         );
 
