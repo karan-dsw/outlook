@@ -1,8 +1,8 @@
 // API URL Configuration
 const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
 // const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
-const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
-// const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
+// const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
+const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
 
 let mailboxItem = null;
 let filename = '';
@@ -153,26 +153,67 @@ async function triggerFlowAndLoadForm() {
             detected_at: emailData.receivedDateTime || new Date().toISOString()
         };
 
-        // Step 3: Trigger Power Automate flow (async, don't wait)
-        loadingText.textContent = 'Triggering Power Automate flow...';
-        loadingSubtext.textContent = 'Sending email data for processing';
+        // Step 3: Send data directly to backend API immediately
+        loadingText.textContent = 'Processing email...';
+        loadingSubtext.textContent = 'Sending to backend for analysis';
 
-        const flowUrl = "https://default74afe875305e4ab4ba4ac1359a7629.ae.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/89c12382226642a4907cd110e9e7ab87/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Nbz7sUIbNoHlSBt_KVnF3CFKCCf9lPYn-LbIxZsWouA";
+        console.log('Sending direct submission to backend...');
 
-        // Trigger flow but don't wait for response (fire and forget)
-        fetch(flowUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(emailData)
-        }).then(response => {
-            if (response.ok) {
-                console.log('Flow triggered successfully');
-            } else {
-                console.warn('Flow trigger failed:', response.status);
+        // Find the ACORD attachment
+        let primaryAttachment = null;
+        for (const att of emailData.attachments) {
+            if (att.name && att.name.toLowerCase().startsWith('acord_')) {
+                primaryAttachment = att;
+                break;
             }
-        }).catch(err => {
-            console.warn('Flow trigger error:', err);
-        });
+        }
+
+        // Fallback to first attachment if no ACORD file found
+        if (!primaryAttachment && emailData.attachments.length > 0) {
+            primaryAttachment = emailData.attachments[0];
+        }
+
+        if (primaryAttachment) {
+            try {
+                const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
+                const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
+
+                const submitResponse = await fetch(`${apiBaseURL}${apiPrefix}/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({
+                        filename: primaryAttachment.name,
+                        attachment_base64: primaryAttachment.contentBytes,
+                        email_metadata: {
+                            subject: emailData.subject,
+                            from: emailData.from,
+                            receivedDateTime: emailData.receivedDateTime,
+                            body: emailData.body,
+                            userEmail: emailData.userEmail,
+                            triggeredAt: emailData.triggeredAt
+                        },
+                        email_fields: formFields
+                    })
+                });
+
+                if (submitResponse.ok) {
+                    const result = await submitResponse.json();
+                    console.log('✓ Backend processing started:', result);
+
+                    // Store session/processing info for later use
+                    extractedData.session_id = result.session_id;
+                    extractedData.processing_status = 'completed';
+                } else {
+                    console.warn('Backend submission failed:', submitResponse.status);
+                }
+            } catch (apiError) {
+                console.error('API submission error:', apiError);
+                // Continue anyway - show form even if API fails
+            }
+        }
 
         Office.context.mailbox.item.notificationMessages.removeAsync("progress");
         Office.context.mailbox.item.notificationMessages.removeAsync("formSuccess"); // Clear any previous notifications
@@ -182,9 +223,9 @@ async function triggerFlowAndLoadForm() {
             "formSuccess",
             {
                 type: "informationalMessage",
-                message: "Form data extracted! Opening form in taskpane...",
+                message: "Email processing complete! Data saved to Policy Center.",
                 icon: "Icon.80x80",
-                persistent: false
+                persistent: true
             }
         );
 
@@ -595,34 +636,64 @@ async function handleFormSubmit(e) {
 
         submitButton.textContent = 'Submitting...';
 
-        // Combined request: Process file with email fields and PDF
-        console.log('Processing file with email fields...');
+        // Combined request: Send email data + attachment + form fields directly to backend
+        console.log('Sending direct submission to backend...');
         console.log('Filename:', filename);
         console.log('Form data:', formData);
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
         const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
 
-        const processResponse = await fetch(`${apiBaseURL}${apiPrefix}/process`, {
+        // Get email data with attachment
+        const emailDataWithAttachment = await getEmailData();
+
+        // Find the appropriate attachment (ACORD file or first attachment)
+        let primaryAttachment = null;
+        for (const att of emailDataWithAttachment.attachments) {
+            if (att.name && att.name.toLowerCase().startsWith('acord_')) {
+                primaryAttachment = att;
+                break;
+            }
+        }
+
+        // Fallback to first attachment if no ACORD file found
+        if (!primaryAttachment && emailDataWithAttachment.attachments.length > 0) {
+            primaryAttachment = emailDataWithAttachment.attachments[0];
+        }
+
+        if (!primaryAttachment) {
+            throw new Error('No attachment found in email');
+        }
+
+        // NEW: Use /api/submit endpoint that bypasses Power Automate
+        const submitResponse = await fetch(`${apiBaseURL}${apiPrefix}/submit`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify({
-                filename: filename,
-                email_fields: formData,
-                form_pdf: pdfBase64  // Include the PDF in base64 format
+                filename: primaryAttachment.name,
+                attachment_base64: primaryAttachment.contentBytes,  // Already in base64 from Office.js
+                email_metadata: {
+                    subject: emailDataWithAttachment.subject,
+                    from: emailDataWithAttachment.from,
+                    receivedDateTime: emailDataWithAttachment.receivedDateTime,
+                    body: emailDataWithAttachment.body,
+                    userEmail: emailDataWithAttachment.userEmail,
+                    triggeredAt: emailDataWithAttachment.triggeredAt
+                },
+                email_fields: formData
             })
         });
 
-        if (!processResponse.ok) {
-            const errorText = await processResponse.text();
+        if (!submitResponse.ok) {
+            const errorText = await submitResponse.text();
             console.error('API Error Response:', errorText);
-            throw new Error(`Processing failed: ${processResponse.status}`);
+            throw new Error(`Direct submission failed: ${submitResponse.status}`);
         }
 
-        const result = await processResponse.json();
-        console.log('Processing successful:', result);
+        const result = await submitResponse.json();
+        console.log('Direct submission successful:', result);
 
         if (result.status === 'skipped') {
             console.log('File was skipped - not an ACORD form:', result.filename);
@@ -638,130 +709,37 @@ async function handleFormSubmit(e) {
                     `<a href="${underwritingUrl}" target="_blank">Open Policy Center</a>`;
             }, 1000);
 
-            return; // Don't poll for PDF since none will be generated
+            return; // Don't show report links since file was skipped
         }
 
-        successMessage.textContent = 'Form submitted successfully! Generating report...';
+        // Processing completed successfully!
+        successMessage.textContent = 'Processing completed successfully!';
         successMessage.classList.add('show');
-        submitButton.textContent = 'Generating Report...';
+        submitButton.textContent = 'Complete';
 
-        // Step 5: Poll for PDF report - start immediately with shorter interval
-        console.log('Waiting for PDF report...');
-        let pdfReady = false;
-        let pdfPollingAttempts = 0;
-        const maxPdfPollingAttempts = 60; // 2 minutes max (60 attempts * 2 seconds)
+        // Show success message with links
+        const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
+        const claimsUrl = `${CLAIMS_API_URL}/claims`;
 
-        while (pdfPollingAttempts < maxPdfPollingAttempts && !pdfReady) {
-            try {
-                const pdfResponse = await fetch(`${apiBaseURL}${apiPrefix}/output-pdf`, {
-                    headers: {
-                        'ngrok-skip-browser-warning': 'true',
-                        'Accept': 'application/json'
-                    }
-                });
+        let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
 
-                if (pdfResponse.status === 200) {
-                    const pdfData = await pdfResponse.json();
-                    console.log('PDF is ready!', pdfData);
-
-                    // Prepare URLs
-                    const reportUrl = pdfData.pdf_url;
-                    const sessionID = extractedData ? (extractedData.session_id || extractedData._session_id) : '';
-                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
-                    // const underwritingUrl = `${UNDERWRITING_API_URL}/policy-center`;
-                    const claimsUrl = `${CLAIMS_API_URL}/claims`;
-
-
-
-                    // Update success message with professional styling (no emojis)
-                    let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
-                    // successHtml += `<a href="${reportUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; margin-bottom: 10px; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Saved Data</a>`;
-
-                    if (processingType === 'claims') {
-                        successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Center</a>`;
-
-                        // Also try automatic open for claims
-                        // setTimeout(() => {
-                        //     try { window.open(claimsUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
-                        // }, 2000);
-                    } else if (processingType === 'underwriting') {
-                        successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Policy Center</a>`;
-
-                        // Also try automatic open for underwriting
-                        // setTimeout(() => {
-                        //     try { window.open(underwritingUrl, '_blank', 'noopener,noreferrer'); } catch (e) { }
-                        // }, 2000);
-                    }
-
-                    // console.log('Opening report:', reportUrl);
-
-                    // // Simulate Ctrl+Click to open tabs in background (without switching)
-                    // function openInBackgroundTab(url) {
-                    //     const a = document.createElement('a');
-                    //     a.href = url;
-                    //     a.target = '_blank';
-                    //     a.rel = 'noopener noreferrer';
-                    //     a.style.display = 'none';
-                    //     document.body.appendChild(a);
-
-                    //     // Simulate Ctrl+Click (Cmd+Click on Mac)
-                    //     const evt = new MouseEvent('click', {
-                    //         bubbles: true,
-                    //         cancelable: true,
-                    //         view: window,
-                    //         ctrlKey: true,  // This is the key to opening in background!
-                    //         metaKey: true   // For Mac users
-                    //     });
-
-                    //     a.dispatchEvent(evt);
-                    //     document.body.removeChild(a);
-                    // }
-
-                    // try {
-                    //     // Open report in background tab
-                    //     openInBackgroundTab(reportUrl);
-
-                    //     // Small delay to ensure tabs open in order
-                    //     setTimeout(() => {
-                    //         // Open the appropriate dashboard based on processing type
-                    //         if (processingType === 'claims') {
-                    //             openInBackgroundTab(claimsUrl);
-                    //         } else if (processingType === 'underwriting') {
-                    //             openInBackgroundTab(underwritingUrl);
-                    //         }
-                    //     }, 100);
-                    // } catch (e) {
-                    //     console.error('Error opening links:', e);
-                    // }
-
-
-                    successMessage.innerHTML = successHtml;
-                    successMessage.classList.add('show');
-                    pdfReady = true;
-                    break;
-                } else {
-                    console.log('Waiting for PDF report...');
-                }
-            } catch (pollError) {
-                console.warn('PDF polling attempt failed:', pollError.message);
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            pdfPollingAttempts++;
+        if (processingType === 'claims') {
+            successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Center</a>`;
+        } else if (processingType === 'underwriting') {
+            successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Policy Center</a>`;
         }
 
-        if (!pdfReady) {
-            successMessage.textContent = "This email's data has been saved in Policy Center. Report is being created...";
-        }
+        successMessage.innerHTML = successHtml;
+        successMessage.classList.add('show');
 
         // Clear all previous notifications first to prevent duplicates
         Office.context.mailbox.item.notificationMessages.removeAsync("progress");
         Office.context.mailbox.item.notificationMessages.removeAsync("formSuccess");
         Office.context.mailbox.item.notificationMessages.removeAsync("processSuccess");
 
-        // Add the final success notification (only this one should show)
+        // Add the final success notification
         Office.context.mailbox.item.notificationMessages.addAsync(
-            "processComplete",  // Use a unique ID for the final notification
+            "processComplete",
             {
                 type: "informationalMessage",
                 message: "This email's data has been saved in Policy Center.",
@@ -770,8 +748,8 @@ async function handleFormSubmit(e) {
             }
         );
 
-        // Keep button as "Processed" and disabled permanently
-        submitButton.textContent = 'Processed';
+        // Keep button as "Complete" and disabled permanently
+        submitButton.textContent = 'Complete';
         submitButton.disabled = true;
 
         // Taskpane will remain open so user can see the success message and links
