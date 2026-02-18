@@ -754,21 +754,21 @@ async function handleFormSubmit(e) {
                     persistent: true
                 });
 
-                // Poll /api/status until done (if we have a session_id)
-                const pollSessionId = result.session_id || (extractedData && extractedData.session_id);
-                if (pollSessionId) {
-                    const pollInterval = setInterval(async () => {
+                // Use SSE (Server-Sent Events) — server pushes result instantly, no polling
+                const sseSessionId = result.session_id || (extractedData && extractedData.session_id);
+                if (sseSessionId) {
+                    const evtSource = new EventSource(
+                        `${UNDERWRITING_API_URL}/api/stream/${sseSessionId}`
+                    );
+
+                    evtSource.onmessage = (event) => {
+                        evtSource.close(); // single-event stream, close immediately
                         try {
-                            const statusResp = await fetch(`${UNDERWRITING_API_URL}/api/status/${pollSessionId}`, {
-                                headers: { 'ngrok-skip-browser-warning': 'true' }
-                            });
-                            const statusData = await statusResp.json();
-                            console.log('Poll status:', statusData.status);
+                            const statusData = JSON.parse(event.data);
+                            console.log('SSE result:', statusData);
 
                             if (statusData.status === 'done') {
-                                clearInterval(pollInterval);
                                 submitButton.textContent = 'Complete';
-
                                 const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
                                 let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
                                 if (processingType === 'claims') {
@@ -779,7 +779,6 @@ async function handleFormSubmit(e) {
                                 successMessage.innerHTML = successHtml;
 
                             } else if (statusData.status === 'error') {
-                                clearInterval(pollInterval);
                                 submitButton.textContent = 'Submit';
                                 submitButton.disabled = false;
                                 successMessage.innerHTML = `<strong>Processing failed:</strong> ${statusData.error || 'Unknown error'}`;
@@ -787,12 +786,17 @@ async function handleFormSubmit(e) {
                                 successMessage.style.color = '#a80000';
                                 successMessage.style.borderLeft = '4px solid #a80000';
                             }
-                            // else still 'processing' — keep polling
-                        } catch (pollErr) {
-                            console.warn('Status poll error:', pollErr);
+                        } catch (parseErr) {
+                            console.warn('SSE parse error:', parseErr);
                         }
-                    }, 2000); // poll every 2 seconds
+                    };
+
+                    evtSource.onerror = (err) => {
+                        console.warn('SSE connection error:', err);
+                        evtSource.close();
+                    };
                 }
+
                 return;
             }
 
