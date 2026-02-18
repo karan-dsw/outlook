@@ -192,10 +192,16 @@ async function triggerFlowAndLoadForm() {
                     const acordBytes = Uint8Array.from(atob(acordB64), c => c.charCodeAt(0));
                     formDataPayload.append('file', new Blob([acordBytes], { type: 'application/pdf' }), primaryAttachment.name);
 
-                    // Attach extra attachments (loss run DOCX etc.)
+                    // Attach extra attachments (loss run DOCX etc.) - skip images
+                    const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.ico'];
                     for (const att of emailData.attachments) {
                         if (att === primaryAttachment) continue;
                         if (!att.contentBytes) continue;
+                        const attExt = (att.name || '').toLowerCase().split('.').pop();
+                        if (IMAGE_EXTS.includes('.' + attExt)) {
+                            console.log('Skipping image attachment:', att.name);
+                            continue;
+                        }
                         try {
                             const extraB64 = att.contentBytes.includes(',')
                                 ? att.contentBytes.split(',')[1]
