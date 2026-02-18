@@ -754,49 +754,66 @@ async function handleFormSubmit(e) {
                     persistent: true
                 });
 
-                // Use SSE (Server-Sent Events) — server pushes result instantly, no polling
+                // Use fetch stream (SSE-like) to support custom headers
                 const sseSessionId = result.session_id || (extractedData && extractedData.session_id);
                 if (sseSessionId) {
-                    const evtSource = new EventSource(
-                        `${UNDERWRITING_API_URL}/api/stream/${sseSessionId}`
-                    );
+                    try {
+                        const response = await fetch(`${UNDERWRITING_API_URL}/api/stream/${sseSessionId}`, {
+                            headers: { 'ngrok-skip-browser-warning': 'true' }
+                        });
 
-                    evtSource.onmessage = (event) => {
-                        evtSource.close(); // single-event stream, close immediately
-                        try {
-                            const statusData = JSON.parse(event.data);
-                            console.log('SSE result:', statusData);
+                        if (!response.ok) throw new Error('SSE connection failed');
 
-                            if (statusData.status === 'done') {
-                                submitButton.textContent = 'Complete';
-                                const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
-                                let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
-                                if (processingType === 'claims') {
-                                    successHtml += `<a href="${CLAIMS_API_URL}/claims" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
-                                } else {
-                                    successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+
+                        while (true) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value, { stream: true });
+                            console.log('Stream chunk:', chunk);
+
+                            // Parse SSE data: "data: {...}\n\n"
+                            const lines = chunk.split('\n');
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const jsonStr = line.substring(6).trim();
+                                        if (!jsonStr) continue;
+                                        const statusData = JSON.parse(jsonStr);
+                                        console.log('Stream result:', statusData);
+
+                                        if (statusData.status === 'done') {
+                                            submitButton.textContent = 'Complete';
+                                            const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
+                                            let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
+                                            if (processingType === 'claims') {
+                                                successHtml += `<a href="${CLAIMS_API_URL}/claims" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+                                            } else {
+                                                successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
+                                            }
+                                            successMessage.innerHTML = successHtml;
+                                            return; // Stop reading stream
+
+                                        } else if (statusData.status === 'error') {
+                                            submitButton.textContent = 'Submit';
+                                            submitButton.disabled = false;
+                                            successMessage.innerHTML = `<strong>Processing failed:</strong> ${statusData.error || 'Unknown error'}`;
+                                            successMessage.style.background = '#fde7e9';
+                                            successMessage.style.color = '#a80000';
+                                            successMessage.style.borderLeft = '4px solid #a80000';
+                                            return; // Stop reading stream
+                                        }
+                                    } catch (e) {
+                                        console.warn('Stream parse error:', e);
+                                    }
                                 }
-                                successMessage.innerHTML = successHtml;
-
-                            } else if (statusData.status === 'error') {
-                                submitButton.textContent = 'Submit';
-                                submitButton.disabled = false;
-                                successMessage.innerHTML = `<strong>Processing failed:</strong> ${statusData.error || 'Unknown error'}`;
-                                successMessage.style.background = '#fde7e9';
-                                successMessage.style.color = '#a80000';
-                                successMessage.style.borderLeft = '4px solid #a80000';
                             }
-                        } catch (parseErr) {
-                            console.warn('SSE parse error:', parseErr);
                         }
-                    };
-
-                    evtSource.onerror = (err) => {
-                        console.warn('SSE connection error:', err);
-                        evtSource.close();
-
-                        // Fallback to polling if SSE fails
-                        console.log('Falling back to polling...');
+                    } catch (err) {
+                        console.warn('Stream error, falling back to polling:', err);
+                        // Fallback logic remains same...
                         const pollInterval = setInterval(async () => {
                             try {
                                 const statusResp = await fetch(`${UNDERWRITING_API_URL}/api/status/${sseSessionId}`, {
@@ -830,7 +847,7 @@ async function handleFormSubmit(e) {
                                 console.warn('Status poll error (fallback):', pollErr);
                             }
                         }, 2000);
-                    };
+                    }
                 }
 
                 return;
