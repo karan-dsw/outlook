@@ -153,13 +153,7 @@ async function triggerFlowAndLoadForm() {
             detected_at: emailData.receivedDateTime || new Date().toISOString()
         };
 
-        // Step 3: Send data directly to backend API immediately
-        loadingText.textContent = 'Processing email...';
-        loadingSubtext.textContent = 'Sending to backend for analysis';
-
-        console.log('Sending direct submission to backend...');
-
-        // Find the ACORD attachment
+        // Find ACORD attachment (and collect extras) before showing form
         let primaryAttachment = null;
         for (const att of emailData.attachments) {
             if (att.name && att.name.toLowerCase().startsWith('acord_')) {
@@ -167,81 +161,85 @@ async function triggerFlowAndLoadForm() {
                 break;
             }
         }
-
-        // Fallback to first attachment if no ACORD file found
         if (!primaryAttachment && emailData.attachments.length > 0) {
             primaryAttachment = emailData.attachments[0];
         }
 
-        if (primaryAttachment) {
-            try {
-                const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
-                const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
-
-                const submitResponse = await fetch(`${apiBaseURL}${apiPrefix}/submit`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'ngrok-skip-browser-warning': 'true'
-                    },
-                    body: JSON.stringify({
-                        filename: primaryAttachment.name,
-                        attachment_base64: primaryAttachment.contentBytes,
-                        email_metadata: {
-                            subject: emailData.subject,
-                            from: emailData.from,
-                            receivedDateTime: emailData.receivedDateTime,
-                            body: emailData.body,
-                            userEmail: emailData.userEmail,
-                            triggeredAt: emailData.triggeredAt
-                        },
-                        email_fields: formFields
-                    })
-                });
-
-                if (submitResponse.ok) {
-                    const result = await submitResponse.json();
-                    console.log('✓ Backend processing started:', result);
-
-                    // Store session/processing info for later use
-                    extractedData.session_id = result.session_id;
-                    extractedData.processing_status = 'completed';
-                } else {
-                    console.warn('Backend submission failed:', submitResponse.status);
-                }
-            } catch (apiError) {
-                console.error('API submission error:', apiError);
-                // Continue anyway - show form even if API fails
-            }
-        }
-
-        Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-        Office.context.mailbox.item.notificationMessages.removeAsync("formSuccess"); // Clear any previous notifications
-
-        // Show success notification
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "formSuccess",
-            {
-                type: "informationalMessage",
-                message: "Email processing complete! Data saved to Policy Center.",
-                icon: "Icon.80x80",
-                persistent: true
-            }
-        );
-
-        // Step 4: Show form and populate immediately
+        // Step 3: Show form IMMEDIATELY (don't wait for backend)
         loadingText.textContent = 'Loading form...';
         loadingSubtext.textContent = 'Preparing your insurance policy information';
 
-        // Show form before populating (elements must be visible to access)
         loadingContainer.style.display = 'none';
         formContainer.style.display = 'block';
 
-        // Small delay to ensure DOM is fully rendered
         await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Now populate the form
         populateForm(extractedData);
+
+        // Step 4: Fire-and-forget backend extraction (runs in background)
+        if (primaryAttachment) {
+            (async () => {
+                try {
+                    const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
+                    const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
+
+                    // Build FormData with ACORD PDF + extra attachments + email_metadata
+                    const formDataPayload = new FormData();
+
+                    // Decode base64 ACORD PDF and attach as binary
+                    const acordB64 = primaryAttachment.contentBytes.includes(',')
+                        ? primaryAttachment.contentBytes.split(',')[1]
+                        : primaryAttachment.contentBytes;
+                    const acordBytes = Uint8Array.from(atob(acordB64), c => c.charCodeAt(0));
+                    formDataPayload.append('file', new Blob([acordBytes], { type: 'application/pdf' }), primaryAttachment.name);
+
+                    // Attach extra attachments (loss run DOCX etc.)
+                    for (const att of emailData.attachments) {
+                        if (att === primaryAttachment) continue;
+                        if (!att.contentBytes) continue;
+                        try {
+                            const extraB64 = att.contentBytes.includes(',')
+                                ? att.contentBytes.split(',')[1]
+                                : att.contentBytes;
+                            const extraBytes = Uint8Array.from(atob(extraB64), c => c.charCodeAt(0));
+                            formDataPayload.append('extra_attachments', new Blob([extraBytes]), att.name);
+                        } catch (e) {
+                            console.warn('Could not attach extra file:', att.name, e);
+                        }
+                    }
+
+                    // Attach full email_metadata (including itemId + internetMessageId for EML download)
+                    formDataPayload.append('email_metadata', JSON.stringify({
+                        subject: emailData.subject,
+                        from: emailData.from,
+                        receivedDateTime: emailData.receivedDateTime,
+                        body: emailData.body,
+                        userEmail: emailData.userEmail,
+                        triggeredAt: emailData.triggeredAt,
+                        id: emailData.itemId,
+                        itemId: emailData.itemId,
+                        internetMessageId: emailData.internetMessageId,
+                        conversationId: emailData.conversationId
+                    }));
+
+                    const extractResponse = await fetch(`${apiBaseURL}${apiPrefix}/extract`, {
+                        method: 'POST',
+                        headers: { 'ngrok-skip-browser-warning': 'true' },
+                        body: formDataPayload
+                    });
+
+                    if (extractResponse.ok) {
+                        const result = await extractResponse.json();
+                        console.log('✓ Background extraction complete:', result);
+                        extractedData.session_id = result.session_id;
+                        extractedData.processing_status = 'extracted';
+                    } else {
+                        console.warn('Background extraction failed:', extractResponse.status);
+                    }
+                } catch (apiError) {
+                    console.error('Background extraction error:', apiError);
+                }
+            })();
+        }
 
     } catch (error) {
         console.error('Error:', error);
@@ -664,27 +662,56 @@ async function handleFormSubmit(e) {
             throw new Error('No attachment found in email');
         }
 
-        // NEW: Use /api/submit endpoint that bypasses Power Automate
-        const submitResponse = await fetch(`${apiBaseURL}${apiPrefix}/submit`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            },
-            body: JSON.stringify({
-                filename: primaryAttachment.name,
-                attachment_base64: primaryAttachment.contentBytes,  // Already in base64 from Office.js
-                email_metadata: {
-                    subject: emailDataWithAttachment.subject,
-                    from: emailDataWithAttachment.from,
-                    receivedDateTime: emailDataWithAttachment.receivedDateTime,
-                    body: emailDataWithAttachment.body,
-                    userEmail: emailDataWithAttachment.userEmail,
-                    triggeredAt: emailDataWithAttachment.triggeredAt
+        // Use /api/process if we have a session_id from the trigger step, else fallback to /api/submit
+        const sessionId = extractedData && extractedData.session_id;
+        let submitResponse;
+
+        if (sessionId && processingType !== 'claims') {
+            // Part 2: process using existing session (no re-extraction)
+            console.log('Using /api/process with session_id:', sessionId);
+            submitResponse = await fetch(`${apiBaseURL}${apiPrefix}/process`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
                 },
-                email_fields: formData
-            })
-        });
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    email_fields: formData,
+                    form_pdf: pdfBase64
+                })
+            });
+        } else {
+            // Fallback: full submit (session_id not ready or claims flow)
+            console.log('Falling back to /api/submit (no session_id or claims flow)');
+            submitResponse = await fetch(`${apiBaseURL}${apiPrefix}/submit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({
+                    filename: primaryAttachment.name,
+                    attachment_base64: primaryAttachment.contentBytes,
+                    email_metadata: {
+                        subject: emailDataWithAttachment.subject,
+                        from: emailDataWithAttachment.from,
+                        receivedDateTime: emailDataWithAttachment.receivedDateTime,
+                        body: emailDataWithAttachment.body,
+                        userEmail: emailDataWithAttachment.userEmail,
+                        triggeredAt: emailDataWithAttachment.triggeredAt,
+                        id: emailDataWithAttachment.itemId,
+                        itemId: emailDataWithAttachment.itemId,
+                        internetMessageId: emailDataWithAttachment.internetMessageId,
+                        conversationId: emailDataWithAttachment.conversationId
+                    },
+                    email_fields: formData,
+                    extra_attachments: emailDataWithAttachment.attachments
+                        .filter(a => a !== primaryAttachment && a.contentBytes)
+                        .map(a => ({ name: a.name, contentBytes: a.contentBytes }))
+                })
+            });
+        }
 
         if (!submitResponse.ok) {
             const errorText = await submitResponse.text();
