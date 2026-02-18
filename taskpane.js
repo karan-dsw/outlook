@@ -719,77 +719,119 @@ async function handleFormSubmit(e) {
             });
         }
 
-        if (!submitResponse.ok) {
-            const errorText = await submitResponse.text();
-            console.error('API Error Response:', errorText);
-            throw new Error(`Direct submission failed: ${submitResponse.status}`);
-        }
+        // Handle async 202 (background processing) or sync 200 (skipped/done)
+        if (submitResponse.status === 202 || submitResponse.ok) {
+            const result = await submitResponse.json();
+            console.log('Submit response:', result);
 
-        const result = await submitResponse.json();
-        console.log('Direct submission successful:', result);
+            if (result.status === 'skipped') {
+                console.log('File was skipped - not an ACORD form:', result.filename);
+                successMessage.textContent = 'Email analysis complete';
+                successMessage.classList.add('show');
+                submitButton.textContent = 'Complete';
+                submitButton.disabled = true;
+                setTimeout(() => {
+                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-center`;
+                    successMessage.innerHTML = `<strong>Email saved to Policy Center successfully</strong><br><br>` +
+                        `<a href="${underwritingUrl}" target="_blank">Open Policy Center</a>`;
+                }, 1000);
+                return;
+            }
 
-        if (result.status === 'skipped') {
-            console.log('File was skipped - not an ACORD form:', result.filename);
-            successMessage.textContent = 'Email analysis complete';
+            // 202: processing started in background — show immediate feedback
+            if (submitResponse.status === 202 || result.status === 'processing') {
+                successMessage.innerHTML = `<strong>✅ Submitted!</strong> Processing in background&hellip;<br>
+                    <small style="color:#555">You can close this panel. The report will be emailed to you when ready.</small>`;
+                successMessage.classList.add('show');
+                submitButton.textContent = 'Processing…';
+                submitButton.disabled = true;
+
+                // Show Outlook notification immediately
+                Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+                Office.context.mailbox.item.notificationMessages.addAsync("processComplete", {
+                    type: "informationalMessage",
+                    message: "This email's data has been saved in Policy Center.",
+                    icon: "Icon.80x80",
+                    persistent: true
+                });
+
+                // Poll /api/status until done (if we have a session_id)
+                const pollSessionId = result.session_id || (extractedData && extractedData.session_id);
+                if (pollSessionId) {
+                    const pollInterval = setInterval(async () => {
+                        try {
+                            const statusResp = await fetch(`${UNDERWRITING_API_URL}/api/status/${pollSessionId}`, {
+                                headers: { 'ngrok-skip-browser-warning': 'true' }
+                            });
+                            const statusData = await statusResp.json();
+                            console.log('Poll status:', statusData.status);
+
+                            if (statusData.status === 'done') {
+                                clearInterval(pollInterval);
+                                submitButton.textContent = 'Complete';
+
+                                const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
+                                let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
+                                if (processingType === 'claims') {
+                                    successHtml += `<a href="${CLAIMS_API_URL}/claims" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+                                } else {
+                                    successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
+                                }
+                                if (statusData.report_url) {
+                                    successHtml += `<br><a href="${statusData.report_url}" target="_blank" style="color:#0078d4;font-size:12px;">View Report in OneDrive</a>`;
+                                }
+                                successMessage.innerHTML = successHtml;
+
+                            } else if (statusData.status === 'error') {
+                                clearInterval(pollInterval);
+                                submitButton.textContent = 'Submit';
+                                submitButton.disabled = false;
+                                successMessage.innerHTML = `<strong>Processing failed:</strong> ${statusData.error || 'Unknown error'}`;
+                                successMessage.style.background = '#fde7e9';
+                                successMessage.style.color = '#a80000';
+                                successMessage.style.borderLeft = '4px solid #a80000';
+                            }
+                            // else still 'processing' — keep polling
+                        } catch (pollErr) {
+                            console.warn('Status poll error:', pollErr);
+                        }
+                    }, 2000); // poll every 2 seconds
+                }
+                return;
+            }
+
+            // Sync 200 success (shouldn't normally happen for /api/process now, but handle gracefully)
+            successMessage.textContent = 'Processing completed successfully!';
             successMessage.classList.add('show');
             submitButton.textContent = 'Complete';
-            submitButton.disabled = false;
+            submitButton.disabled = true;
 
-            // Show link to Policy Center
-            setTimeout(() => {
-                const underwritingUrl = `${UNDERWRITING_API_URL}/policy-center`;
-                successMessage.innerHTML = `<strong>Email saved to Policy Center successfully</strong><br><br>` +
-                    `<a href="${underwritingUrl}" target="_blank">Open Policy Center</a>`;
-            }, 1000);
+            const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
+            const claimsUrl = `${CLAIMS_API_URL}/claims`;
+            let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
+            if (processingType === 'claims') {
+                successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Center</a>`;
+            } else if (processingType === 'underwriting') {
+                successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Policy Center</a>`;
+            }
+            successMessage.innerHTML = successHtml;
+            successMessage.classList.add('show');
 
-            return; // Don't show report links since file was skipped
-        }
-
-        // Processing completed successfully!
-        successMessage.textContent = 'Processing completed successfully!';
-        successMessage.classList.add('show');
-        submitButton.textContent = 'Complete';
-
-        // Show success message with links
-        const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
-        const claimsUrl = `${CLAIMS_API_URL}/claims`;
-
-        let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
-
-        if (processingType === 'claims') {
-            successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Center</a>`;
-        } else if (processingType === 'underwriting') {
-            successHtml += `<a href="${underwritingUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Policy Center</a>`;
-        }
-
-        successMessage.innerHTML = successHtml;
-        successMessage.classList.add('show');
-
-        // Clear all previous notifications first to prevent duplicates
-        Office.context.mailbox.item.notificationMessages.removeAsync("progress");
-        Office.context.mailbox.item.notificationMessages.removeAsync("formSuccess");
-        Office.context.mailbox.item.notificationMessages.removeAsync("processSuccess");
-
-        // Add the final success notification
-        Office.context.mailbox.item.notificationMessages.addAsync(
-            "processComplete",
-            {
+            Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+            Office.context.mailbox.item.notificationMessages.removeAsync("formSuccess");
+            Office.context.mailbox.item.notificationMessages.removeAsync("processSuccess");
+            Office.context.mailbox.item.notificationMessages.addAsync("processComplete", {
                 type: "informationalMessage",
                 message: "This email's data has been saved in Policy Center.",
                 icon: "Icon.80x80",
                 persistent: true
-            }
-        );
+            });
+        } else {
+            const errorText = await submitResponse.text();
+            console.error('API Error Response:', errorText);
+            throw new Error(`Submission failed: ${submitResponse.status}`);
+        }
 
-        // Keep button as "Complete" and disabled permanently
-        submitButton.textContent = 'Complete';
-        submitButton.disabled = true;
-
-        // Taskpane will remain open so user can see the success message and links
-        // setTimeout(() => {
-        //     console.log('Closing taskpane...');
-        //     Office.context.ui.closeContainer();
-        // }, 2000);
 
     } catch (error) {
         console.error('Error submitting form:', error);
