@@ -794,6 +794,42 @@ async function handleFormSubmit(e) {
                     evtSource.onerror = (err) => {
                         console.warn('SSE connection error:', err);
                         evtSource.close();
+
+                        // Fallback to polling if SSE fails
+                        console.log('Falling back to polling...');
+                        const pollInterval = setInterval(async () => {
+                            try {
+                                const statusResp = await fetch(`${UNDERWRITING_API_URL}/api/status/${sseSessionId}`, {
+                                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                                });
+                                const statusData = await statusResp.json();
+                                console.log('Poll status (fallback):', statusData.status);
+
+                                if (statusData.status === 'done') {
+                                    clearInterval(pollInterval);
+                                    submitButton.textContent = 'Complete';
+                                    const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
+                                    let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
+                                    if (processingType === 'claims') {
+                                        successHtml += `<a href="${CLAIMS_API_URL}/claims" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+                                    } else {
+                                        successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
+                                    }
+                                    successMessage.innerHTML = successHtml;
+
+                                } else if (statusData.status === 'error') {
+                                    clearInterval(pollInterval);
+                                    submitButton.textContent = 'Submit';
+                                    submitButton.disabled = false;
+                                    successMessage.innerHTML = `<strong>Processing failed:</strong> ${statusData.error || 'Unknown error'}`;
+                                    successMessage.style.background = '#fde7e9';
+                                    successMessage.style.color = '#a80000';
+                                    successMessage.style.borderLeft = '4px solid #a80000';
+                                }
+                            } catch (pollErr) {
+                                console.warn('Status poll error (fallback):', pollErr);
+                            }
+                        }, 2000);
                     };
                 }
 
