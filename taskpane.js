@@ -758,7 +758,7 @@ async function handleFormSubmit(e) {
                 const sseSessionId = result.session_id || (extractedData && extractedData.session_id);
                 if (sseSessionId) {
                     const evtSource = new EventSource(
-                        `${UNDERWRITING_API_URL}/api/stream/${sseSessionId}?ngrok-skip-browser-warning=true`
+                        `${UNDERWRITING_API_URL}/api/stream/${sseSessionId}`
                     );
 
                     evtSource.onmessage = (event) => {
