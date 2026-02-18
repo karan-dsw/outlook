@@ -740,8 +740,7 @@ async function handleFormSubmit(e) {
 
             // 202: processing started in background — show immediate feedback
             if (submitResponse.status === 202 || result.status === 'processing') {
-                successMessage.innerHTML = `<strong>✅ Submitted!</strong> Processing in background&hellip;<br>
-                    <small style="color:#555">You can close this panel. The report will be emailed to you when ready.</small>`;
+                successMessage.innerHTML = `<strong>✅ Submitted!</strong> Processing in background&hellip;`;
                 successMessage.classList.add('show');
                 submitButton.textContent = 'Processing…';
                 submitButton.disabled = true;
@@ -776,9 +775,6 @@ async function handleFormSubmit(e) {
                                     successHtml += `<a href="${CLAIMS_API_URL}/claims" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
                                 } else {
                                     successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
-                                }
-                                if (statusData.report_url) {
-                                    successHtml += `<br><a href="${statusData.report_url}" target="_blank" style="color:#0078d4;font-size:12px;">View Report in OneDrive</a>`;
                                 }
                                 successMessage.innerHTML = successHtml;
 
