@@ -740,7 +740,7 @@ async function handleFormSubmit(e) {
 
             // 202: processing started in background — show immediate feedback
             if (submitResponse.status === 202 || result.status === 'processing') {
-                successMessage.innerHTML = `<strong>✅ Submitted!</strong> Processing in background&hellip;`;
+                successMessage.innerHTML = `Sending email data to the Policy Center&hellip;`;
                 successMessage.classList.add('show');
                 submitButton.textContent = 'Processing…';
                 submitButton.disabled = true;
