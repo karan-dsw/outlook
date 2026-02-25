@@ -83,28 +83,16 @@ function extractFormFieldsFromEmail(emailData) {
     // Leave comments empty - user will add manually
     formFields.comments = '';
 
-    // Format timestamp from receivedDateTime
-    if (emailData.receivedDateTime) {
-        const date = new Date(emailData.receivedDateTime);
-        formFields.timestamp = date.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-    } else {
-        const now = new Date();
-        formFields.timestamp = now.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
+    // Always use current time when form opens
+    const now = new Date();
+    formFields.timestamp = now.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
 
     console.log('Extracted form fields:', formFields);
     return formFields;
@@ -150,7 +138,7 @@ async function triggerFlowAndLoadForm() {
         extractedData = {
             filename: formFields.document_name,
             email_fields: formFields,
-            detected_at: emailData.receivedDateTime || new Date().toISOString()
+            detected_at: new Date().toISOString()
         };
 
         // Find ACORD attachment (and collect extras) before showing form
