@@ -3,6 +3,7 @@
 const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
 const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
 // const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
+const HARDCODED_CLAIM_ID = '2735101';
 
 let mailboxItem = null;
 let filename = '';
@@ -10,8 +11,8 @@ let processingType = ''; // 'claims' or 'underwriting'
 let extractedData = null; // Store extracted data globally
 
 
-function buildClaimsCenterUrl(policyNumber) {
-    return `${CLAIMS_API_URL}/claim/${encodeURIComponent(policyNumber || '')}`;
+function buildClaimsCenterUrl() {
+    return `${CLAIMS_API_URL}/claim/${HARDCODED_CLAIM_ID}`;
 }
 
 
