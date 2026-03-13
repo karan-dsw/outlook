@@ -164,7 +164,7 @@ async function triggerFlowAndLoadForm() {
         populateForm(extractedData);
 
         // Step 4: Fire-and-forget backend extraction (runs in background)
-        if (primaryAttachment) {
+        if (primaryAttachment && processingType !== 'claims') {
             (async () => {
                 try {
                     const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
@@ -619,6 +619,25 @@ async function handleFormSubmit(e) {
     const successMessage = document.getElementById('successMessage');
 
     try {
+        // Claims flow: no backend processing — just show the Claims Center link
+        if (processingType === 'claims') {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Complete';
+            const claimsUrl = `${CLAIMS_API_URL}/claims`;
+            successMessage.innerHTML =
+                `<strong>Claim submitted successfully</strong><br><br>` +
+                `<a href="${claimsUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+            successMessage.classList.add('show');
+            Office.context.mailbox.item.notificationMessages.removeAsync('progress');
+            Office.context.mailbox.item.notificationMessages.addAsync('processComplete', {
+                type: 'informationalMessage',
+                message: 'Claim has been submitted to Claims Center.',
+                icon: 'Icon.80x80',
+                persistent: true
+            });
+            return;
+        }
+
         submitButton.disabled = true;
         submitButton.textContent = 'Generating PDF...';
 
