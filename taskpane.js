@@ -637,7 +637,7 @@ async function handleFormSubmit(e) {
 
             await new Promise(resolve => setTimeout(resolve, 2500));
 
-            const claimsUrl = `${CLAIMS_API_URL}/claims`;
+            const claimsUrl = `${CLAIMS_API_URL}/claim/2735101`;
             submitButton.textContent = 'Complete';
             successMessage.innerHTML =
                 `<strong>Claim submitted successfully</strong><br><br>` +
@@ -811,7 +811,7 @@ async function handleFormSubmit(e) {
                                             const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
                                             let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
                                             if (processingType === 'claims') {
-                                                successHtml += `<a href="${CLAIMS_API_URL}/claims" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+                                                successHtml += `<a href="${CLAIMS_API_URL}/claim/2735101" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
                                             } else {
                                                 successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
                                             }
@@ -850,7 +850,7 @@ async function handleFormSubmit(e) {
                                     const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
                                     let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
                                     if (processingType === 'claims') {
-                                        successHtml += `<a href="${CLAIMS_API_URL}/claims" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+                                        successHtml += `<a href="${CLAIMS_API_URL}/claim/2735101" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
                                     } else {
                                         successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
                                     }
@@ -882,7 +882,7 @@ async function handleFormSubmit(e) {
             submitButton.disabled = true;
 
             const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
-            const claimsUrl = `${CLAIMS_API_URL}/claims`;
+            const claimsUrl = `${CLAIMS_API_URL}/claim/2735101`;
             let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
             if (processingType === 'claims') {
                 successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Center</a>`;
