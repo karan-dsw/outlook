@@ -619,15 +619,30 @@ async function handleFormSubmit(e) {
     const successMessage = document.getElementById('successMessage');
 
     try {
-        // Claims flow: no backend processing — just show the Claims Center link
+        // Claims flow: no backend processing — show loading for 2-3s then reveal Claims Center link
         if (processingType === 'claims') {
             submitButton.disabled = true;
-            submitButton.textContent = 'Complete';
+            submitButton.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 14 14" style="animation:spin 0.8s linear infinite;"><circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2"/><path d="M7 1.5a5.5 5.5 0 0 1 5.5 5.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Processing...</span>';
+
+            // Inject keyframe if not already present
+            if (!document.getElementById('spin-keyframe')) {
+                const style = document.createElement('style');
+                style.id = 'spin-keyframe';
+                style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+                document.head.appendChild(style);
+            }
+
+            successMessage.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 14 14" style="animation:spin 0.8s linear infinite;"><circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(0,120,212,0.25)" stroke-width="2"/><path d="M7 1.5a5.5 5.5 0 0 1 5.5 5.5" fill="none" stroke="#0078d4" stroke-width="2" stroke-linecap="round"/></svg>Submitting claim&hellip;</span>';
+            successMessage.classList.add('show');
+
+            await new Promise(resolve => setTimeout(resolve, 2500));
+
             const claimsUrl = `${CLAIMS_API_URL}/claims`;
+            submitButton.textContent = 'Complete';
             successMessage.innerHTML =
                 `<strong>Claim submitted successfully</strong><br><br>` +
                 `<a href="${claimsUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
-            successMessage.classList.add('show');
+
             Office.context.mailbox.item.notificationMessages.removeAsync('progress');
             Office.context.mailbox.item.notificationMessages.addAsync('processComplete', {
                 type: 'informationalMessage',
