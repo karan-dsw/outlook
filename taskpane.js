@@ -635,13 +635,28 @@ async function handleFormSubmit(e) {
             successMessage.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 14 14" style="animation:spin 0.8s linear infinite;"><circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(0,120,212,0.25)" stroke-width="2"/><path d="M7 1.5a5.5 5.5 0 0 1 5.5 5.5" fill="none" stroke="#0078d4" stroke-width="2" stroke-linecap="round"/></svg>Submitting claim&hellip;</span>';
             successMessage.classList.add('show');
 
-            await new Promise(resolve => setTimeout(resolve, 2500));
+            const createFolderResponse = await fetch(`${CLAIMS_API_URL}/claims-api/create-folder`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({
+                    policy_number: formData.policy_number,
+                    timestamp: formData.timestamp
+                })
+            });
 
-            const claimsUrl = `${CLAIMS_API_URL}/claim/2735101`;
+            const createFolderResult = await createFolderResponse.json();
+            if (!createFolderResponse.ok || !createFolderResult.folder_url) {
+                throw new Error(createFolderResult.error || 'Claims folder creation failed');
+            }
+
+            const claimsFolderUrl = createFolderResult.folder_url;
             submitButton.textContent = 'Complete';
             successMessage.innerHTML =
-                `<strong>Claim submitted successfully</strong><br><br>` +
-                `<a href="${claimsUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+                `<strong>Claim sent to Claims Center successfully</strong><br><br>` +
+                `<a href="${claimsFolderUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Folder</a>`;
 
             Office.context.mailbox.item.notificationMessages.removeAsync('progress');
             Office.context.mailbox.item.notificationMessages.addAsync('processComplete', {
