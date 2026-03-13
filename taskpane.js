@@ -10,6 +10,11 @@ let processingType = ''; // 'claims' or 'underwriting'
 let extractedData = null; // Store extracted data globally
 
 
+function buildClaimsCenterUrl(policyNumber) {
+    return `${CLAIMS_API_URL}/claim/${encodeURIComponent(policyNumber || '')}`;
+}
+
+
 Office.onReady((info) => {
     if (info.host === Office.HostType.Outlook) {
         mailboxItem = Office.context.mailbox.item;
@@ -648,15 +653,15 @@ async function handleFormSubmit(e) {
             });
 
             const createFolderResult = await createFolderResponse.json();
-            if (!createFolderResponse.ok || !createFolderResult.folder_url) {
+            if (!createFolderResponse.ok || !createFolderResult.success) {
                 throw new Error(createFolderResult.error || 'Claims folder creation failed');
             }
 
-            const claimsFolderUrl = createFolderResult.folder_url;
+            const claimsCenterUrl = buildClaimsCenterUrl(formData.policy_number);
             submitButton.textContent = 'Complete';
             successMessage.innerHTML =
                 `<strong>Claim sent to Claims Center successfully</strong><br><br>` +
-                `<a href="${claimsFolderUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Folder</a>`;
+                `<a href="${claimsCenterUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
 
             Office.context.mailbox.item.notificationMessages.removeAsync('progress');
             Office.context.mailbox.item.notificationMessages.addAsync('processComplete', {
@@ -826,7 +831,7 @@ async function handleFormSubmit(e) {
                                             const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
                                             let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
                                             if (processingType === 'claims') {
-                                                successHtml += `<a href="${CLAIMS_API_URL}/claim/2735101" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+                                                successHtml += `<a href="${buildClaimsCenterUrl(formData.policy_number)}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
                                             } else {
                                                 successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
                                             }
@@ -865,7 +870,7 @@ async function handleFormSubmit(e) {
                                     const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
                                     let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
                                     if (processingType === 'claims') {
-                                        successHtml += `<a href="${CLAIMS_API_URL}/claim/2735101" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
+                                        successHtml += `<a href="${buildClaimsCenterUrl(formData.policy_number)}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Claims Center</a>`;
                                     } else {
                                         successHtml += `<a href="${underwritingUrl}" target="_blank" style="color:#0078d4;text-decoration:none;font-weight:600;display:block;padding:8px 12px;background:#f3f9fc;border-radius:4px;border-left:3px solid #0078d4;">Open Policy Center</a>`;
                                     }
@@ -897,7 +902,7 @@ async function handleFormSubmit(e) {
             submitButton.disabled = true;
 
             const underwritingUrl = `${UNDERWRITING_API_URL}/policy-detail/${formData.policy_number}`;
-            const claimsUrl = `${CLAIMS_API_URL}/claim/2735101`;
+            const claimsUrl = buildClaimsCenterUrl(formData.policy_number);
             let successHtml = `<strong>Email saved to Policy Center successfully</strong><br><br>`;
             if (processingType === 'claims') {
                 successHtml += `<a href="${claimsUrl}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Center</a>`;
