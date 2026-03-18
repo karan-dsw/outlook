@@ -9,6 +9,7 @@ let mailboxItem = null;
 let filename = '';
 let processingType = ''; // 'claims' or 'underwriting'
 let extractedData = null; // Store extracted data globally
+let latestEmailData = null; // Keep full email payload for claims direct processing
 
 
 function buildClaimsCenterUrl() {
@@ -123,6 +124,7 @@ async function triggerFlowAndLoadForm() {
         // Step 1: Get email data and detect processing type from attachments
         loadingText.textContent = 'Collecting email data...';
         const emailData = await getEmailData();
+        latestEmailData = emailData;
         console.log('Email data collected:', emailData);
 
         // Detect processing type from attachments
@@ -333,6 +335,33 @@ function populateForm(extractedData) {
             });
         }
     }
+}
+
+function getClaimsAttachmentForSubmission() {
+    if (!latestEmailData || !Array.isArray(latestEmailData.attachments)) {
+        return null;
+    }
+
+    // Prefer the exact selected filename if available, fallback to first C*.pdf attachment.
+    let selected = latestEmailData.attachments.find(att => att && att.name === filename);
+    if (!selected) {
+        selected = latestEmailData.attachments.find(att => {
+            const name = (att && att.name ? att.name : '').toLowerCase();
+            return /^c\d/.test(name) && name.endsWith('.pdf');
+        });
+    }
+
+    if (!selected) {
+        return null;
+    }
+
+    return {
+        id: selected.id,
+        name: selected.name,
+        contentType: selected.contentType,
+        size: selected.size,
+        contentBytes: selected.contentBytes || selected.content || ''
+    };
 }
 
 // Collapse form permanently after successful submission
@@ -689,6 +718,31 @@ async function handleFormSubmit(e) {
         console.log('Form data:', formData);
         const apiPrefix = processingType === 'claims' ? '/claims-api' : '/api';
         const apiBaseURL = processingType === 'claims' ? CLAIMS_API_URL : UNDERWRITING_API_URL;
+
+        const requestPayload = {
+            filename: filename,
+            email_fields: formData,
+            form_pdf: pdfBase64  // Include the PDF in base64 format
+        };
+
+        if (processingType === 'claims') {
+            const claimsAttachment = getClaimsAttachmentForSubmission();
+            if (claimsAttachment) {
+                requestPayload.claims_attachment = claimsAttachment;
+            }
+
+            requestPayload.email_data = latestEmailData || {};
+            requestPayload.email_metadata = {
+                internetMessageId: (latestEmailData && latestEmailData.internetMessageId) || '',
+                toRecipients: [
+                    (latestEmailData && latestEmailData.userEmail) ||
+                    (Office.context && Office.context.mailbox && Office.context.mailbox.userProfile && Office.context.mailbox.userProfile.emailAddress) || ''
+                ].filter(Boolean),
+                from: (latestEmailData && latestEmailData.from) || '',
+                subject: (latestEmailData && latestEmailData.subject) || '',
+                receivedDateTime: (latestEmailData && latestEmailData.receivedDateTime) || ''
+            };
+        }
 
         // Get email data with attachment
         const emailDataWithAttachment = await getEmailData();
