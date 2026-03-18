@@ -10,9 +10,14 @@ let filename = '';
 let processingType = ''; // 'claims' or 'underwriting'
 let extractedData = null; // Store extracted data globally
 let latestEmailData = null; // Keep full email payload for claims direct processing
+let currentClaimsFolderUrl = null; // Store the folder URL from the API response for dynamic linking
 
 
 function buildClaimsCenterUrl() {
+    // Use the dynamically stored folder URL if available, otherwise fall back to hardcoded ID
+    if (currentClaimsFolderUrl) {
+        return currentClaimsFolderUrl;
+    }
     return `${CLAIMS_API_URL}/claim/${HARDCODED_CLAIM_ID}`;
 }
 
@@ -780,6 +785,12 @@ async function handleFormSubmit(e) {
         if (submitResponse.status === 202 || submitResponse.ok) {
             const result = await submitResponse.json();
             console.log('Submit response:', result);
+            
+            // Store the claims folder URL for dynamic linking
+            if (result.claims_folder_url) {
+                currentClaimsFolderUrl = result.claims_folder_url;
+                console.log('Stored claims folder URL:', currentClaimsFolderUrl);
+            }
 
             if (result.status === 'skipped') {
                 console.log('File was skipped - not an ACORD form:', result.filename);
