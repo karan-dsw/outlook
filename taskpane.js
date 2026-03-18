@@ -10,13 +10,13 @@ let filename = '';
 let processingType = ''; // 'claims' or 'underwriting'
 let extractedData = null; // Store extracted data globally
 let latestEmailData = null; // Keep full email payload for claims direct processing
-let currentClaimsFolderUrl = null; // Store the folder URL from the API response for dynamic linking
+let currentClaimsId = null; // Store the claim ID from the API response for dynamic linking
 
 
 function buildClaimsCenterUrl() {
-    // Use the dynamically stored folder URL if available, otherwise fall back to hardcoded ID
-    if (currentClaimsFolderUrl) {
-        return currentClaimsFolderUrl;
+    // Use the dynamically stored claim ID to construct the proper link
+    if (currentClaimsId) {
+        return `${CLAIMS_API_URL}/claim/${currentClaimsId}`;
     }
     return `${CLAIMS_API_URL}/claim/${HARDCODED_CLAIM_ID}`;
 }
@@ -176,7 +176,7 @@ async function triggerFlowAndLoadForm() {
         await new Promise(resolve => setTimeout(resolve, 100));
         populateForm(extractedData);
 
-        // Step 4: Fire-and-forget backend extraction (runs in background)
+        // Step 4: Fire-and-forget backend call (runs in background)
         if (primaryAttachment && processingType !== 'claims') {
             (async () => {
                 try {
@@ -244,6 +244,64 @@ async function triggerFlowAndLoadForm() {
                     }
                 } catch (apiError) {
                     console.error('Background extraction error:', apiError);
+                }
+            })();
+        }
+
+        // Claims flow: trigger backend immediately when Outlook flow starts.
+        if (processingType === 'claims') {
+            (async () => {
+                try {
+                    const claimsAttachment = getClaimsAttachmentForSubmission();
+                    if (!claimsAttachment || !claimsAttachment.contentBytes) {
+                        console.log('No valid claims input attachment found. Skipping claims backend trigger.');
+                        return;
+                    }
+
+                    const claimsPayload = {
+                        filename: claimsAttachment.name,
+                        attachment_base64: claimsAttachment.contentBytes,
+                        email_fields: formFields,
+                        email_metadata: {
+                            subject: emailData.subject,
+                            from: emailData.from,
+                            receivedDateTime: emailData.receivedDateTime,
+                            body: emailData.body,
+                            userEmail: emailData.userEmail,
+                            triggeredAt: emailData.triggeredAt,
+                            id: emailData.itemId,
+                            itemId: emailData.itemId,
+                            internetMessageId: emailData.internetMessageId,
+                            conversationId: emailData.conversationId
+                        },
+                        extra_attachments: emailData.attachments
+                            .filter(a => a && a.id !== claimsAttachment.id && a.contentBytes)
+                            .map(a => ({ name: a.name, contentBytes: a.contentBytes }))
+                    };
+
+                    claimsPayload.claims_attachment = claimsAttachment;
+
+                    const claimsResponse = await fetch(`${CLAIMS_API_URL}/claims-api/submit`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'ngrok-skip-browser-warning': 'true'
+                        },
+                        body: JSON.stringify(claimsPayload)
+                    });
+
+                    if (!claimsResponse.ok) {
+                        console.warn('Claims background submit failed:', claimsResponse.status);
+                        return;
+                    }
+
+                    const claimsResult = await claimsResponse.json();
+                    if (claimsResult && claimsResult.claim_id) {
+                        currentClaimsId = claimsResult.claim_id;
+                        console.log('Claims background submit complete. claim_id:', currentClaimsId);
+                    }
+                } catch (claimsError) {
+                    console.warn('Claims background submit error:', claimsError);
                 }
             })();
         }
@@ -347,13 +405,15 @@ function getClaimsAttachmentForSubmission() {
         return null;
     }
 
+    const isClaimsInputPdf = (att) => {
+        const name = (att && att.name ? att.name : '').toLowerCase();
+        return /^c\d/.test(name) && name.endsWith('.pdf');
+    };
+
     // Prefer the exact selected filename if available, fallback to first C*.pdf attachment.
-    let selected = latestEmailData.attachments.find(att => att && att.name === filename);
+    let selected = latestEmailData.attachments.find(att => att && att.name === filename && isClaimsInputPdf(att));
     if (!selected) {
-        selected = latestEmailData.attachments.find(att => {
-            const name = (att && att.name ? att.name : '').toLowerCase();
-            return /^c\d/.test(name) && name.endsWith('.pdf');
-        });
+        selected = latestEmailData.attachments.find(att => isClaimsInputPdf(att));
     }
 
     if (!selected) {
@@ -446,7 +506,17 @@ async function getEmailData() {
         body: body,
         from: getSender(item),
         receivedDateTime: item.dateTimeCreated || item.dateTimeModified || new Date().toISOString(),
-        internetMessageId: item.internetMessageId || "",
+        internetMessageId: (() => {
+            let id = item.internetMessageId || "";
+            if (id) {
+                // Remove anything after the first closing '>' to fix malformed IDs
+                const firstCloseIdx = id.indexOf('>');
+                if (firstCloseIdx !== -1) {
+                    id = id.substring(0, firstCloseIdx + 1);
+                }
+            }
+            return id;
+        })(),
         itemId: itemId,
         conversationId: conversationId,
         hasAttachments: attachments.length > 0,
@@ -660,6 +730,30 @@ async function handleFormSubmit(e) {
 
     try {
         submitButton.disabled = true;
+
+        // Claims flow no longer triggers backend on submit.
+        if (processingType === 'claims') {
+            if (extractedData && extractedData.email_fields) {
+                extractedData.email_fields = { ...extractedData.email_fields, ...formData };
+            }
+
+            submitButton.textContent = 'Complete';
+            submitButton.disabled = true;
+
+            successMessage.innerHTML = `<strong>Form submitted successfully</strong><br><br>` +
+                `<a href="${buildClaimsCenterUrl()}" target="_blank" style="color: #0078d4; text-decoration: none; font-weight: 600; display: block; padding: 8px 12px; background: #f3f9fc; border-radius: 4px; border-left: 3px solid #0078d4;">Open Claims Center</a>`;
+            successMessage.classList.add('show');
+
+            Office.context.mailbox.item.notificationMessages.removeAsync("progress");
+            Office.context.mailbox.item.notificationMessages.addAsync("processComplete", {
+                type: "informationalMessage",
+                message: "Claim form submitted. Open Claims Center from the taskpane link.",
+                icon: "Icon.80x80",
+                persistent: true
+            });
+            return;
+        }
+
         submitButton.textContent = 'Generating PDF...';
 
         // Generate PDF from form data
@@ -786,10 +880,10 @@ async function handleFormSubmit(e) {
             const result = await submitResponse.json();
             console.log('Submit response:', result);
             
-            // Store the claims folder URL for dynamic linking
-            if (result.claims_folder_url) {
-                currentClaimsFolderUrl = result.claims_folder_url;
-                console.log('Stored claims folder URL:', currentClaimsFolderUrl);
+            // Store the claim ID for dynamic linking
+            if (result.claim_id) {
+                currentClaimsId = result.claim_id;
+                console.log('Stored claim ID:', currentClaimsId);
             }
 
             if (result.status === 'skipped') {
