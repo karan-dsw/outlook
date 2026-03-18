@@ -261,6 +261,7 @@ async function triggerFlowAndLoadForm() {
                     const claimsPayload = {
                         filename: claimsAttachment.name,
                         attachment_base64: claimsAttachment.contentBytes,
+                        defer_policy_folder: true,
                         email_fields: formFields,
                         email_metadata: {
                             subject: emailData.subject,
@@ -296,9 +297,14 @@ async function triggerFlowAndLoadForm() {
                     }
 
                     const claimsResult = await claimsResponse.json();
+                    if (claimsResult && claimsResult.session_id) {
+                        extractedData.session_id = claimsResult.session_id;
+                    }
                     if (claimsResult && claimsResult.claim_id) {
                         currentClaimsId = claimsResult.claim_id;
                         console.log('Claims background submit complete. claim_id:', currentClaimsId);
+                    } else {
+                        console.log('Claims pre-processing complete; awaiting submit confirmation.', claimsResult);
                     }
                 } catch (claimsError) {
                     console.warn('Claims background submit error:', claimsError);
@@ -731,10 +737,63 @@ async function handleFormSubmit(e) {
     try {
         submitButton.disabled = true;
 
-        // Claims flow no longer triggers backend on submit.
+        // Claims flow finalizes on submit using confirmed/edited policy number.
         if (processingType === 'claims') {
             if (extractedData && extractedData.email_fields) {
                 extractedData.email_fields = { ...extractedData.email_fields, ...formData };
+            }
+
+            submitButton.textContent = 'Generating PDF...';
+            const pdfBase64 = await generateFormPDF(formData);
+            submitButton.textContent = 'Submitting...';
+
+            const claimsPayload = {
+                email_fields: formData,
+                form_pdf: pdfBase64,
+                email_data: latestEmailData || {},
+                email_metadata: {
+                    internetMessageId: (latestEmailData && latestEmailData.internetMessageId) || '',
+                    toRecipients: [
+                        (latestEmailData && latestEmailData.userEmail) ||
+                        (Office.context && Office.context.mailbox && Office.context.mailbox.userProfile && Office.context.mailbox.userProfile.emailAddress) || ''
+                    ].filter(Boolean),
+                    from: (latestEmailData && latestEmailData.from) || '',
+                    subject: (latestEmailData && latestEmailData.subject) || '',
+                    receivedDateTime: (latestEmailData && latestEmailData.receivedDateTime) || ''
+                }
+            };
+
+            const sessionId = extractedData && extractedData.session_id;
+            if (sessionId) {
+                claimsPayload.session_id = sessionId;
+            } else {
+                const claimsAttachment = getClaimsAttachmentForSubmission();
+                if (!claimsAttachment || !claimsAttachment.contentBytes) {
+                    throw new Error('No valid claims attachment found to finalize claim.');
+                }
+                claimsPayload.filename = claimsAttachment.name;
+                claimsPayload.attachment_base64 = claimsAttachment.contentBytes;
+                claimsPayload.claims_attachment = claimsAttachment;
+            }
+
+            const claimsSubmitResponse = await fetch(`${CLAIMS_API_URL}/claims-api/process`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify(claimsPayload)
+            });
+
+            if (!claimsSubmitResponse.ok) {
+                const errorText = await claimsSubmitResponse.text();
+                console.error('Claims finalize error:', errorText);
+                throw new Error(`Claims submit failed: ${claimsSubmitResponse.status}`);
+            }
+
+            const claimsResult = await claimsSubmitResponse.json();
+            if (claimsResult && claimsResult.claim_id) {
+                currentClaimsId = claimsResult.claim_id;
             }
 
             submitButton.textContent = 'Complete';
@@ -747,7 +806,7 @@ async function handleFormSubmit(e) {
             Office.context.mailbox.item.notificationMessages.removeAsync("progress");
             Office.context.mailbox.item.notificationMessages.addAsync("processComplete", {
                 type: "informationalMessage",
-                message: "Claim form submitted. Open Claims Center from the taskpane link.",
+                message: "Claim form submitted and finalized with confirmed policy number.",
                 icon: "Icon.80x80",
                 persistent: true
             });
