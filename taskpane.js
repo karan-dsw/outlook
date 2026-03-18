@@ -14,11 +14,7 @@ let currentClaimsId = null; // Store the claim ID from the API response for dyna
 
 
 function buildClaimsCenterUrl() {
-    // Use the dynamically stored claim ID to construct the proper link
-    if (currentClaimsId) {
-        return `${CLAIMS_API_URL}/claim/${currentClaimsId}`;
-    }
-    return `${CLAIMS_API_URL}/claim/${HARDCODED_CLAIM_ID}`;
+    return 'https://metamathematical-mariano-interresponsible.ngrok-free.dev/claims';
 }
 
 
