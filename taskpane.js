@@ -1,8 +1,8 @@
 // API URL Configuration
-const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
-//const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
-//const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
-const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
+// const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
+const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
+const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
+// const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
 const HARDCODED_CLAIM_ID = '2735101';
 
 let mailboxItem = null;
