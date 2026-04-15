@@ -1,6 +1,6 @@
 // API URL Configuration
-// const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
-const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
+const CLAIMS_API_URL = 'https://metamathematical-mariano-interresponsible.ngrok-free.dev';
+// const CLAIMS_API_URL = 'https://demo.datasciencewizards.ai:5006';
 const UNDERWRITING_API_URL = 'https://demo.datasciencewizards.ai:5004';
 // const UNDERWRITING_API_URL = 'https://corinne-unstudded-uneugenically.ngrok-free.dev';
 const HARDCODED_CLAIM_ID = '2735101';
@@ -934,7 +934,7 @@ async function handleFormSubmit(e) {
         if (submitResponse.status === 202 || submitResponse.ok) {
             const result = await submitResponse.json();
             console.log('Submit response:', result);
-            
+
             // Store the claim ID for dynamic linking
             if (result.claim_id) {
                 currentClaimsId = result.claim_id;
