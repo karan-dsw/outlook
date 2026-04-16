@@ -14,7 +14,7 @@ let currentClaimsId = null; // Store the claim ID from the API response for dyna
 
 
 function buildClaimsCenterUrl() {
-    return 'https://metamathematical-mariano-interresponsible.ngrok-free.dev/claims';
+    return `${CLAIMS_API_URL}/claims`;
 }
 
 
